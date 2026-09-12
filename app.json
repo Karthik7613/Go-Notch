@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "WhatsApp Monitor",
+    "slug": "whatsapp-monitor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "jsEngine": "hermes",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0b141a"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0b141a"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+.env
+jdk/
+android/
+auth_info_baileys/
+data/
+WhatsApp_Monitor.apk
+.expo/
+scratch/
+

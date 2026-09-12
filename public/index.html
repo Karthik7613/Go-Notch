@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.json">
+  <title>WhatsApp Trip Monitor Mobile App</title>
+  <!-- Google Fonts - Poppins (Apple-Style Clean Modern Typography) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" media="print" onload="this.media='all'">
+  <!-- Bundled Local Vendor Scripts (Offline & APK Support) -->
+  <script src="vendor/lucide.min.js"></script>
+  <script src="vendor/socket.io.min.js"></script>
+</head>
+<body class="bg-slate-100 dark:bg-wa-dark text-slate-800 dark:text-slate-100 h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200">
+
+  <!-- QR Code Scan Modal -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-lg z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative">
+      <button id="closeQrModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Close">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="text-center space-y-2">
+        <div class="inline-flex p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-200 dark:border-emerald-500/20 mb-1">
+          <i data-lucide="qr-code" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Connect WhatsApp Account</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-xs">
+          Scan this QR code with WhatsApp on your phone (Linked Devices) to load all your real chats and contacts.
+        </p>
+      </div>
+
+      <!-- Already Connected Account Banner -->
+      <div id="alreadyConnectedBanner" class="hidden p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl text-center space-y-3">
+        <div class="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+          <span>Account Connected</span>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-300">Connected as <strong id="connectedUserName" class="text-slate-900 dark:text-white">WhatsApp Account</strong></p>
+        <div class="flex items-center gap-2 pt-1">
+          <button id="qrContinueBtn" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow">
+            Open WhatsApp App
+          </button>
+          <button id="qrLogoutBtn" class="py-2 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow">
+            Scan New QR
+          </button>
+        </div>
+      </div>
+
+      <div id="qrContainer" class="flex flex-col items-center justify-center min-h-[240px] bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700/60 relative">
+        <div id="qrLoading" class="flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400 text-center">
+          <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-xs font-medium">Generating WhatsApp QR Code...</span>
+          <button id="forceGenerateQrBtn" class="mt-2 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            Reset & Generate Fresh QR
+          </button>
+        </div>
+
+        <div id="qrFrame" class="hidden flex flex-col items-center">
+          <div class="p-3 bg-white rounded-xl shadow-xl border-4 border-emerald-500/30">
+            <img id="qrImage" class="w-48 h-48 object-contain" alt="WhatsApp QR Code">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-emerald-500"></i>
+            Point your WhatsApp camera to scan
+          </p>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+        <p class="font-semibold text-slate-900 dark:text-white">Steps to connect:</p>
+        <ol class="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400 text-[11px]">
+          <li>Open WhatsApp on your mobile phone</li>
+          <li>Tap <strong>Settings</strong> or <strong>Menu</strong> & select <strong>Linked Devices</strong></li>
+          <li>Tap <strong>Link a Device</strong> and point camera at QR code</li>
+        </ol>
+      </div>
+
+      <!-- Collapsible Advanced Server Settings -->
+      <div class="pt-1 text-center">
+        <button id="toggleAdvancedServerBtn" class="text-[11px] font-semibold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1 mx-auto">
+          <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+          <span>Advanced Server Connection</span>
+        </button>
+
+        <div id="advancedServerBox" class="hidden mt-3 p-3 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-2 text-left">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold text-slate-700 dark:text-slate-300">Server Host Address:</span>
+            <span id="qrServerStatus" class="font-bold text-amber-500">Connecting...</span>
+          </div>
+          <div class="flex gap-2">
+            <input type="text" id="qrServerUrlInput" placeholder="http://192.0.0.2:3000" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
+            <button id="qrConnectServerBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow flex-shrink-0">
+              Connect
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400">Default: <code>http://192.0.0.2:3000</code> or your backend server URL.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Web Main App Wrapper -->
+  <div class="flex-1 flex w-full max-w-[1700px] mx-auto overflow-hidden shadow-2xl border-x border-slate-200 dark:border-slate-800 relative">
+
+    <!-- PAGE VIEW 1: WHATSAPP FULL CHAT PAGE -->
+    <div id="pageViewWhatsApp" class="page-view flex-1 flex w-full h-full overflow-hidden relative">
+
+      <!-- LEFT SIDEBAR: Account Header, Search, Filter Pills, & Chat List -->
+      <aside id="chatSidebar" class="w-full sm:w-80 md:w-96 bg-white dark:bg-wa-sidebarDark border-r border-slate-100 dark:border-slate-800 flex flex-col flex-shrink-0 h-full">
+
+        <!-- iOS Top Header: "Chats" + Camera + Green Plus + Theme/Refresh -->
+        <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Chats</h1>
+            <div id="statusBadge" class="flex items-center ml-1" title="Connected">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- 1. Refresh Button (Replaced Camera) -->
+            <button id="refreshThreadsBtn" title="Refresh Chats" class="p-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <i data-lucide="rotate-cw" class="w-5 h-5"></i>
+            </button>
+
+            <!-- 2. Dark / Light Theme Toggle Button -->
+            <button id="themeToggleBtn" title="Toggle Light / Dark Theme" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
+              <i id="themeIcon" data-lucide="sun-moon" class="w-5 h-5"></i>
+            </button>
+
+            <button id="logoutBtn" title="Disconnect Account" class="hidden p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pill Search Bar with Gray Background, Borderless, & Icon on Left -->
+        <div class="px-4 py-2 bg-white dark:bg-wa-sidebarDark flex-shrink-0">
+          <div class="wa-search-container flex items-center bg-[#f0f2f5] dark:bg-slate-800 rounded-xl px-3.5 py-2 transition-all">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 dark:text-slate-400 mr-2.5 flex-shrink-0 pointer-events-none"></i>
+            <input type="text" id="sidebarSearchInput" placeholder="Search..." class="w-full bg-transparent border-0 border-none outline-none text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none p-0 leading-normal">
+          </div>
+        </div>
+
+        <!-- Category Filter Chips Row: All, Groups, Unread, Channels -->
+        <div class="px-4 py-2 bg-white dark:bg-wa-sidebarDark flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0 border-b border-slate-100 dark:border-slate-800/80">
+          <button id="filterAllBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition">
+            All <span id="sidebarTotalCount">0</span>
+          </button>
+
+          <button id="filterGroupsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+            Groups
+          </button>
+
+          <button id="filterUnreadBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+            Unread <span id="filterUnreadBadge">0</span>
+          </button>
+
+          <button id="filterChannelsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+            Channels
+          </button>
+        </div>
+
+        <!-- Real Chat & Group List -->
+        <div id="chatThreadsContainer" class="flex-1 overflow-y-auto divide-y divide-slate-100/70 dark:divide-slate-800/60 bg-white dark:bg-wa-sidebarDark">
+          <div id="sidebarEmpty" class="p-8 text-center text-slate-400 text-xs space-y-2">
+            <i data-lucide="messages-square" class="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600"></i>
+            <p>Loading real WhatsApp chats & groups...</p>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- RIGHT MAIN PANEL: Active Chat Thread Conversation -->
+      <main id="chatMainArea" class="mobile-hidden flex-1 flex flex-col h-full bg-wa-light dark:bg-wa-dark bg-chat-pattern relative overflow-hidden">
+
+        <!-- Default Placeholder Screen -->
+        <div id="noChatSelected" class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+          <div class="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/20 shadow-lg">
+            <i data-lucide="message-square" class="w-12 h-12"></i>
+          </div>
+          <div class="space-y-1 max-w-md">
+            <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">WhatsApp Web Monitor</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Select a Group or Contact from the left sidebar to view real-time conversation threads, search messages, and monitor activity live.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400 bg-white/80 dark:bg-slate-800/80 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
+            <i data-lucide="lock" class="w-3.5 h-3.5 text-emerald-500"></i>
+            End-to-end connected via Web WhatsApp QR
+          </div>
+        </div>
+
+        <!-- Active Chat Conversation View -->
+        <div id="activeChatView" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+
+          <!-- Active Chat Top Header -->
+          <div class="h-16 bg-wa-headerLight dark:bg-wa-headerDark px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 flex-shrink-0 z-10 shadow-sm">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+              <button id="mobileBackBtn" title="Back to Chat List" class="sm:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition -ml-1">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <div id="activeChatAvatar" class="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center flex-shrink-0 text-sm shadow">
+                C
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 id="activeChatName" class="font-bold text-slate-900 dark:text-white text-sm truncate">Chat Name</h3>
+                  <span id="activeChatTypeBadge" class="hidden px-2 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded text-[10px] font-bold">GROUP</span>
+                </div>
+                <p id="activeChatJid" class="text-[11px] text-slate-500 dark:text-slate-400 truncate">jid@whatsapp.net</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="relative hidden sm:block">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="chatSearchInput" placeholder="Search in chat..." class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+              </div>
+
+              <button id="exportThreadBtn" title="Export this chat" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                Export
+              </button>
+            </div>
+          </div>
+
+          <!-- Chat Messages Canvas -->
+          <div id="chatMessagesCanvas" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+          </div>
+
+          <!-- Bottom Outbound Message Bar -->
+          <div class="bg-wa-headerLight dark:bg-wa-headerDark p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center gap-3 flex-shrink-0">
+            <div class="relative flex-1 flex items-center">
+              <input type="text" id="chatMessageInput" placeholder="Type a message..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-inner">
+              <button id="sendMessageBtn" title="Send WhatsApp Message" class="absolute right-1.5 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition shadow">
+                <i data-lucide="send" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- PAGE VIEW 2: MATCHING PAGE (Dedicated Matched Trips & Alerts Page) -->
+    <div id="pageViewMatching" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
+      
+      <!-- Top Header Row: Matched Trips on left (font-weight: 500), Clear CTA on right -->
+      <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Matched Trips</h1>
+          <span id="pageMatchingBadge" class="hidden px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold rounded-full text-xs">0</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="clearMatchingMsgsBtn" title="Clear un-saved matched trips" class="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-full text-xs font-semibold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-rose-100 dark:border-rose-900/30">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub-Tabs: Matching & Saved -->
+      <div class="px-4 py-2 bg-white dark:bg-wa-headerDark flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
+        <button id="matchingTabBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition flex items-center gap-1.5">
+          <span>Matching</span>
+          <span id="matchingTabCount" class="px-1.5 py-0.2 bg-emerald-200/80 dark:bg-emerald-500/30 rounded-full text-[10px] font-bold">0</span>
+        </button>
+
+        <button id="savedTabBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5">
+          <i data-lucide="bookmark" class="w-3 h-3 text-amber-500"></i>
+          <span>Saved</span>
+          <span id="savedTabCount" class="px-1.5 py-0.2 bg-amber-200/70 dark:bg-amber-500/30 text-amber-800 dark:text-amber-300 rounded-full text-[10px] font-bold">0</span>
+        </button>
+      </div>
+
+      <!-- Page Matching Cards Grid Container -->
+      <div class="p-4 sm:p-6 flex-1 overflow-y-auto">
+        <div id="pageMatchingAlertsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Rendered cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE VIEW 3: KEYWORDS SETUP PAGE (Dedicated Keyword Management Page) -->
+    <div id="pageViewKeywords" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
+      
+      <!-- Top Header Row: Keywords on left (matching chat text CSS style) -->
+      <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Keywords</h1>
+        </div>
+      </div>
+
+      <!-- Content Container -->
+      <div class="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto">
+
+      <!-- MESSAGE MONITORING FILTER SECTION (UPCOMING VS ALL MESSAGES) -->
+      <div class="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-blue-500/30 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4 text-blue-500"></i>
+            Message Monitoring Scope
+          </h2>
+          <span id="activeScopeBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+            Active: Upcoming Only
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+          <!-- Option 1: Upcoming Messages Only -->
+          <div id="scopeCardUpcoming" class="monitoring-scope-card active p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 cursor-pointer transition-all flex items-center gap-3 shadow-xs">
+            <input type="radio" id="scopeRadioUpcoming" name="monitoringScopeOption" value="upcoming" checked class="w-4 h-4 text-emerald-600 cursor-pointer flex-shrink-0">
+            <div class="flex items-center justify-between flex-1 gap-2">
+              <label for="scopeRadioUpcoming" class="font-bold text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+                Upcoming Messages Only
+              </label>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex-shrink-0">Live</span>
+            </div>
+          </div>
+
+          <!-- Option 2: All Messages (Upcoming & Old) -->
+          <div id="scopeCardAll" class="monitoring-scope-card p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-all flex items-center gap-3">
+            <input type="radio" id="scopeRadioAll" name="monitoringScopeOption" value="all" class="w-4 h-4 text-emerald-600 cursor-pointer flex-shrink-0">
+            <div class="flex items-center justify-between flex-1 gap-2">
+              <label for="scopeRadioAll" class="font-bold text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="history" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
+                All Messages (Upcoming & Old)
+              </label>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex-shrink-0">Full History</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- MATCH KEYWORDS (MUST INCLUDE) CARD -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-emerald-500/30 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+              Match Keywords (Must Include)
+            </h2>
+            <span class="text-xs text-slate-400 font-semibold">Target Trips</span>
+          </div>
+
+          <form id="pageAddIncludeKeywordForm" class="flex gap-2">
+            <input type="text" id="pageIncludeKeywordInput" placeholder="Add keyword (e.g. chennai, airport, coonoor)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
+            <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add
+            </button>
+          </form>
+          <div id="pageActiveIncludeKeywordTags" class="flex flex-wrap gap-2 pt-2">
+            <span class="text-xs text-slate-400 italic">No include keywords set.</span>
+          </div>
+        </div>
+
+        <!-- EXCLUDE KEYWORDS (MUST NOT INCLUDE) CARD -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-rose-500/30 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="ban" class="w-5 h-5 text-rose-500"></i>
+              Exclude Keywords (Must NOT Include)
+            </h2>
+            <span class="text-xs text-slate-400 font-semibold">Filter Out</span>
+          </div>
+
+          <form id="pageAddExcludeKeywordForm" class="flex gap-2">
+            <input type="text" id="pageExcludeKeywordInput" placeholder="Exclude word (e.g. vacant, vacant chennai)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500">
+            <button type="submit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add
+            </button>
+          </form>
+          <div id="pageActiveExcludeKeywordTags" class="flex flex-wrap gap-2 pt-2">
+            <span class="text-xs text-slate-400 italic">No exclude keywords set.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- PAGE VIEW 4: PROFILE PAGE (Dedicated Account Profile Page) -->
+    <div id="pageViewProfile" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
+
+      <!-- Header: Name -->
+      <div class="px-5 pt-8 pb-4 bg-white dark:bg-slate-900">
+        <h1 id="pageProfileName" class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">WhatsApp Monitor</h1>
+      </div>
+
+      <!-- WhatsApp Connected Card -->
+      <!-- WhatsApp Connected Card — single interactive row -->
+      <button id="profileWACardBtn" class="mx-4 mb-4 w-[calc(100%-2rem)] bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-[0.98] transition text-left">
+        <div class="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="message-circle" class="w-5 h-5 text-white"></i>
+        </div>
+        <span class="flex-1 text-sm font-semibold text-slate-800 dark:text-white">Web WhatsApp Connected</span>
+        <span id="pageProfileWAStatus" class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          Connected
+        </span>
+      </button>
+
+
+      <!-- Settings list rows -->
+      <div class="mx-4 mb-4 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-200 dark:divide-slate-700">
+        <button id="profileHelpBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
+          <i data-lucide="help-circle" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-slate-800 dark:text-white">Help</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Docs and support</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+        </button>
+        <button id="profilePrivacyBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
+          <i data-lucide="shield-check" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-slate-800 dark:text-white">Privacy</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Data and permissions</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+        </button>
+        <button id="profileFeedbackBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
+          <i data-lucide="message-square" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-slate-800 dark:text-white">Feedback</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Share your thoughts</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+        </button>
+      </div>
+
+      <!-- Logout — separate card -->
+      <div class="mx-4 mb-6 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden">
+        <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left">
+          <i data-lucide="log-out" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
+          <span class="text-sm font-semibold text-rose-600 dark:text-rose-400">Disconnect Account</span>
+        </button>
+      </div>
+
+    </div>
+
+
+
+  </div>
+
+  <!-- BOTTOM NAVIGATION BAR (1. WhatsApp, 2. Matching, 3. Keywords, 4. Profile) -->
+  <nav id="bottomNav" class="h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-2">
+    <button data-tab="whatsapp" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold transition text-emerald-600 dark:text-emerald-400">
+      <i data-lucide="message-circle" class="w-6 h-6 mb-0.5"></i>
+      <span class="text-[11px] font-semibold">WhatsApp</span>
+    </button>
+
+    <button data-tab="matching" class="bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
+      <i data-lucide="sparkles" class="w-6 h-6 mb-0.5"></i>
+      <span class="text-[11px]">Matching</span>
+    </button>
+
+    <button data-tab="keywords" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
+      <i data-lucide="tags" class="w-6 h-6 mb-0.5"></i>
+      <span class="text-[11px]">Keywords</span>
+    </button>
+
+    <button data-tab="profile" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
+      <i data-lucide="circle-user" class="w-6 h-6 mb-0.5"></i>
+      <span class="text-[11px]">Profile</span>
+    </button>
+  </nav>
+
+  <!-- Keywords Setup Modal -->
+  <div id="keywordsModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl">
+            <i data-lucide="tags" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Keywords Setup</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Configure matching and exclude rules for WhatsApp monitoring</p>
+          </div>
+        </div>
+        <button id="closeKeywordsModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- MONITORING SCOPE SELECTOR -->
+        <div class="space-y-2 bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200/60 dark:border-blue-800/40">
+          <label class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="filter" class="w-4 h-4 text-blue-500"></i>
+              Monitoring Scope
+            </span>
+            <span id="modalScopeBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">Upcoming Only</span>
+          </label>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" id="modalScopeUpcomingBtn" class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition bg-emerald-100 text-emerald-800 border-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-300">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Upcoming Only
+            </button>
+            <button type="button" id="modalScopeAllBtn" class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+              <i data-lucide="history" class="w-3.5 h-3.5"></i> All Messages
+            </button>
+          </div>
+        </div>
+
+        <!-- MATCH KEYWORDS (MUST INCLUDE) -->
+        <div class="space-y-2 bg-emerald-50/50 dark:bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40">
+          <label class="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+              Match Keywords (Must Include)
+            </span>
+          </label>
+          <form id="modalAddIncludeKeywordForm" class="flex gap-2">
+            <input type="text" id="modalIncludeKeywordInput" placeholder="e.g. chennai, airport, trip..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add
+            </button>
+          </form>
+          <div id="modalActiveIncludeKeywordTags" class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-xs text-slate-400 italic">No include keywords set.</span>
+          </div>
+        </div>
+
+        <!-- EXCLUDE KEYWORDS (MUST NOT INCLUDE) -->
+        <div class="space-y-2 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
+          <label class="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i>
+              Exclude Keywords (Must NOT Include)
+            </span>
+          </label>
+          <form id="modalAddExcludeKeywordForm" class="flex gap-2">
+            <input type="text" id="modalExcludeKeywordInput" placeholder="e.g. vacant, vacant chennai..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500">
+            <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add
+            </button>
+          </form>
+          <div id="modalActiveExcludeKeywordTags" class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-xs text-slate-400 italic">No exclude keywords set.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+        <button id="doneKeywordsModalBtn" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition">
+          Done & Apply
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div class="flex items-center gap-3">
+          <div id="profileModalAvatar" class="w-12 h-12 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-lg shadow-md">
+            WA
+          </div>
+          <div>
+            <h2 id="profileModalName" class="text-base font-bold text-slate-900 dark:text-white">WhatsApp Account</h2>
+            <div id="profileModalStatusBadge" class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span id="profileModalStatusText">Connected</span>
+            </div>
+          </div>
+        </div>
+        <button id="closeProfileModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
+          <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+            <span>Total Messages Monitored:</span>
+            <strong id="profileTotalMsgs" class="text-emerald-600 dark:text-emerald-400 font-bold">0</strong>
+          </div>
+          <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+            <span>Active Keyword Alerts:</span>
+            <strong id="profileTotalAlerts" class="text-amber-500 font-bold">0</strong>
+          </div>
+          <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+            <span>Theme Mode:</span>
+            <button id="profileThemeToggleBtn" class="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1 transition">
+              <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-500"></i>
+              <span>Toggle Light/Dark</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 space-y-1">
+          <p class="font-bold flex items-center gap-1"><i data-lucide="shield-check" class="w-4 h-4"></i> Live WhatsApp Bridge Status</p>
+          <p>Your WhatsApp account is active and automatically receiving live group trip requests and keyword notifications in real-time.</p>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+        <button id="profileShowQRBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
+          <i data-lucide="qr-code" class="w-4 h-4 text-emerald-500"></i>
+          Scan QR Code
+        </button>
+        <button id="profileLogoutBtn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          Disconnect
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== HELP BOTTOM SHEET ===== -->
+  <div id="helpBottomSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="helpBottomSheetBackdrop"></div>
+    <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-6 pb-8 space-y-5 animate-slide-up">
+      <!-- Handle -->
+      <div class="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-1"></div>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Help & Support</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400">Reach us through any of the channels below — we're happy to help!</p>
+
+      <!-- Email CTA -->
+      <a href="mailto:support@pickmicabs.com" class="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-4 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+        <div class="w-11 h-11 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="mail" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-slate-800 dark:text-white">Email Support</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">support@pickmicabs.com</p>
+        </div>
+        <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-400"></i>
+      </a>
+
+      <!-- WhatsApp CTA -->
+      <a href="https://wa.me/918867791805?text=Hi%2C%20I%20need%20help%20with%20the%20WhatsApp%20Monitor%20app" target="_blank" class="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-4 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+        <div class="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="message-circle" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-slate-800 dark:text-white">WhatsApp</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Chat with us directly</p>
+        </div>
+        <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-400"></i>
+      </a>
+
+      <button id="helpBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== PRIVACY BOTTOM SHEET ===== -->
+  <div id="privacyBottomSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="privacyBottomSheetBackdrop"></div>
+    <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-6 pb-8 space-y-4 animate-slide-up" style="max-height:85vh;overflow-y:auto;">
+      <!-- Handle -->
+      <div class="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Privacy Policy</h2>
+      </div>
+
+      <div class="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+        <p><strong class="text-slate-800 dark:text-white">Data Collection</strong><br>This app monitors WhatsApp messages from groups you are part of to detect trip-related keywords. Messages are stored locally on your device server only.</p>
+        <p><strong class="text-slate-800 dark:text-white">No Sharing</strong><br>Your data is never shared with any third party. All processing happens on your own server.</p>
+        <p><strong class="text-slate-800 dark:text-white">WhatsApp Connection</strong><br>This app uses the WhatsApp Web protocol. Your session credentials are stored locally and never transmitted to external servers.</p>
+        <p><strong class="text-slate-800 dark:text-white">Cookies &amp; Storage</strong><br>We use browser localStorage to store your saved trips and UI preferences only.</p>
+      </div>
+
+      <!-- Acceptance notice -->
+      <div class="flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3">
+        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"></i>
+        <p class="text-xs text-emerald-700 dark:text-emerald-300 font-medium">By using this app you have accepted these terms and our privacy policy.</p>
+      </div>
+
+      <button id="privacyBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Got it</button>
+    </div>
+  </div>
+
+  <!-- ===== FEEDBACK BOTTOM SHEET ===== -->
+  <div id="feedbackBottomSheet" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="feedbackBottomSheetBackdrop"></div>
+    <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-6 pb-8 space-y-4 animate-slide-up">
+      <!-- Handle -->
+      <div class="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="message-square" class="w-5 h-5 text-amber-600"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Send Feedback</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Help us improve the app</p>
+        </div>
+      </div>
+
+      <input id="feedbackTitle" type="text" placeholder="Title (e.g. Feature request, Bug report)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      <input id="feedbackSubtitle" type="text" placeholder="Subtitle (optional summary)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      <textarea id="feedbackContent" rows="4" placeholder="Describe your feedback in detail..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+
+      <div class="flex gap-3">
+        <button id="feedbackBottomSheetClose" class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Cancel</button>
+        <button id="feedbackSendBtn" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition flex items-center justify-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          Send
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>

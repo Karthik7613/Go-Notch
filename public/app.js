@@ -433,23 +433,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auth Modal Flow Controller
   function showAuthStep(step) {
-    if (!authModal) return;
-    authModal.classList.remove('hidden');
+    if (authModal) {
+      authModal.classList.remove('hidden');
+      authModal.style.display = 'flex';
+    }
 
     if (qrModal) qrModal.classList.add('hidden');
 
     const mainAppWrapper = document.getElementById('mainAppWrapper');
-    if (mainAppWrapper) mainAppWrapper.classList.add('hidden');
+    if (mainAppWrapper) {
+      mainAppWrapper.classList.add('hidden');
+      mainAppWrapper.style.display = 'none';
+    }
 
     const bottomNav = document.getElementById('bottomNav');
     if (bottomNav) bottomNav.classList.add('hidden');
 
-    if (authPhoneForm) authPhoneForm.classList.add('hidden');
-    if (authOtpForm) authOtpForm.classList.add('hidden');
-    if (authProfileForm) authProfileForm.classList.add('hidden');
+    if (authPhoneForm) { authPhoneForm.classList.add('hidden'); authPhoneForm.style.display = 'none'; }
+    if (authOtpForm) { authOtpForm.classList.add('hidden'); authOtpForm.style.display = 'none'; }
+    if (authProfileForm) { authProfileForm.classList.add('hidden'); authProfileForm.style.display = 'none'; }
 
     if (step === 'phone') {
-      if (authPhoneForm) authPhoneForm.classList.remove('hidden');
+      if (authPhoneForm) {
+        authPhoneForm.classList.remove('hidden');
+        authPhoneForm.style.display = 'block';
+      }
       if (authModalTitle) authModalTitle.textContent = 'Go-Notch Trip Monitor';
       if (authModalSubtitle) authModalSubtitle.textContent = 'Login with your mobile number to access real-time WhatsApp trips';
       if (authPhoneInput) {
@@ -457,7 +465,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => authPhoneInput.focus(), 100);
       }
     } else if (step === 'otp') {
-      if (authOtpForm) authOtpForm.classList.remove('hidden');
+      if (authOtpForm) {
+        authOtpForm.classList.remove('hidden');
+        authOtpForm.style.display = 'block';
+      }
       if (authModalTitle) authModalTitle.textContent = 'Verification Code';
       if (authModalSubtitle) authModalSubtitle.textContent = 'Enter the 4-digit code sent to your mobile number';
       if (authOtpInput) {
@@ -465,7 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => authOtpInput.focus(), 100);
       }
     } else if (step === 'profile') {
-      if (authProfileForm) authProfileForm.classList.remove('hidden');
+      if (authProfileForm) {
+        authProfileForm.classList.remove('hidden');
+        authProfileForm.style.display = 'block';
+      }
       if (authModalTitle) authModalTitle.textContent = 'Profile Setup';
       if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your username and gender to complete registration';
       if (authProfileNameInput) {
@@ -477,10 +491,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function hideAuthModal() {
-    if (authModal) authModal.classList.add('hidden');
+    if (authModal) {
+      authModal.classList.add('hidden');
+      authModal.style.display = 'none';
+    }
 
     const mainAppWrapper = document.getElementById('mainAppWrapper');
-    if (mainAppWrapper) mainAppWrapper.classList.remove('hidden');
+    if (mainAppWrapper) {
+      mainAppWrapper.classList.remove('hidden');
+      mainAppWrapper.style.display = 'flex';
+    }
 
     const bottomNav = document.getElementById('bottomNav');
     if (bottomNav) bottomNav.classList.remove('hidden');
@@ -2336,6 +2356,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showAuthStep('phone');
     } else {
       hideAuthModal();
+      switchTab('whatsapp');
       renderUserProfile(currentUser);
       loadStats();
       loadThreads();

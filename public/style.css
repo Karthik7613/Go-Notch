@@ -60,6 +60,34 @@ html, body {
   flex-direction: column;
 }
 
+#mainAppWrapper {
+  display: flex !important;
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#mainAppWrapper.hidden {
+  display: none !important;
+}
+
+.page-view {
+  display: flex !important;
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.page-view.hidden {
+  display: none !important;
+}
+
 /* Flex Utilities */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }

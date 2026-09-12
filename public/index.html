@@ -15,22 +15,24 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            'wa-dark': '#0b141a',
-            'wa-card': '#111b21',
-            'wa-header': '#202c33',
-            'wa-accent': '#00a884',
-            'wa-teal': '#128c7e',
-            'wa-light': '#25d366',
-            'wa-border': '#222d34'
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'wa-dark': '#0b141a',
+              'wa-card': '#111b21',
+              'wa-header': '#202c33',
+              'wa-accent': '#00a884',
+              'wa-teal': '#128c7e',
+              'wa-light': '#25d366',
+              'wa-border': '#222d34'
+            }
           }
         }
-      }
-    };
+      };
+    }
   </script>
   <!-- Bundled Local Vendor Scripts (Offline & APK Support) -->
   <script src="vendor/lucide.min.js"></script>

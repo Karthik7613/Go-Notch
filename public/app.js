@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterChannelsBtn) filterChannelsBtn.addEventListener('click', () => setFilter('channels'));
 
   function showQrModal() {
+    if (!currentUser) return;
     if (qrModal) qrModal.classList.remove('hidden');
   }
 
@@ -434,6 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function showAuthStep(step) {
     if (!authModal) return;
     authModal.classList.remove('hidden');
+
+    if (qrModal) qrModal.classList.add('hidden');
 
     const mainAppWrapper = document.getElementById('mainAppWrapper');
     if (mainAppWrapper) mainAppWrapper.classList.add('hidden');
@@ -1685,37 +1688,40 @@ document.addEventListener('DOMContentLoaded', () => {
         updateProfilePageData();
       }
 
-      // Connected → close QR modal immediately
+      // Connected → close QR modal
       if (qrModal) qrModal.classList.add('hidden');
       if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
       if (qrContainer) qrContainer.classList.add('hidden');
 
-      loadStats();
-      loadThreads();
+      if (currentUser) {
+        loadStats();
+        loadThreads();
+      }
     } else if (qr) {
       isConnected = false;
       if (statusText) statusText.textContent = 'Scan QR Code';
       if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Scan QR Code`;
 
-      if (qrModal) qrModal.classList.remove('hidden');
-      if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
-      if (qrContainer) qrContainer.classList.remove('hidden');
-      if (qrLoading) qrLoading.classList.add('hidden');
       if (qrFrame) qrFrame.classList.remove('hidden');
       if (qrImage) qrImage.src = qr;
+      if (qrLoading) qrLoading.classList.add('hidden');
+
+      // CRITICAL: NEVER open QR modal automatically without user being logged in
+      if (!currentUser && qrModal) {
+        qrModal.classList.add('hidden');
+      }
 
       if (logoutBtn) logoutBtn.classList.add('hidden');
     } else if (status === 'connecting') {
       if (statusText) statusText.textContent = 'Connecting...';
       if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...`;
 
-      // Do NOT block screen with QR modal while connecting in background if no QR exists
       if (qrModal) qrModal.classList.add('hidden');
     } else {
       if (statusText) statusText.textContent = 'Disconnected';
       if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> Disconnected`;
 
-      if (qrModal && !qr) qrModal.classList.add('hidden');
+      if (qrModal) qrModal.classList.add('hidden');
     }
 
     safeCreateIcons();

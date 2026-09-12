@@ -577,16 +577,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pageActiveExcludeKeywordTags) pageActiveExcludeKeywordTags.innerHTML = excHtml;
     if (modalActiveExcludeKeywordTags) modalActiveExcludeKeywordTags.innerHTML = excHtml;
 
-    document.querySelectorAll('.remove-kw-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const kw = e.currentTarget.getAttribute('data-kw');
-        const type = e.currentTarget.getAttribute('data-type');
-        await removeKeyword(kw, type);
-      });
-    });
-
     safeCreateIcons();
   }
+
+  // Global Delegated Click Listener for Removing Keywords
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.remove-kw-btn');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const kw = btn.getAttribute('data-kw');
+      const type = btn.getAttribute('data-type') || 'include';
+      if (kw) {
+        await removeKeyword(kw, type);
+      }
+    }
+  });
 
   // Sidebar Form Submit Handlers
   if (addIncludeKeywordForm) {

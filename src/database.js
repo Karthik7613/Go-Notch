@@ -81,6 +81,12 @@ function initDb() {
     db.exec(`ALTER TABLE keywords ADD COLUMN type TEXT DEFAULT 'include';`);
   } catch (e) {}
 
+  // Clean up any duplicate keywords
+  try {
+    db.exec(`DELETE FROM keywords WHERE id NOT IN (SELECT MIN(id) FROM keywords GROUP BY LOWER(keyword), COALESCE(type, 'include'));`);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_keywords_unique ON keywords(keyword, type);`);
+  } catch (e) {}
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_jid);
@@ -551,10 +557,10 @@ function addKeyword(keyword, type = 'include') {
   const clean = keyword.trim().toLowerCase();
   const kwType = type === 'exclude' ? 'exclude' : 'include';
   try {
-    const existing = db.prepare("SELECT id FROM keywords WHERE keyword = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
+    const existing = db.prepare("SELECT id FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
     if (existing) return true;
-    const info = db.prepare('INSERT INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)').run(clean, kwType, Math.floor(Date.now() / 1000));
-    return info.changes > 0;
+    db.prepare('INSERT OR IGNORE INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)').run(clean, kwType, Math.floor(Date.now() / 1000));
+    return true;
   } catch (e) {
     console.error('addKeyword error:', e.message);
     return false;
@@ -566,7 +572,7 @@ function removeKeyword(keyword, type = 'include') {
   const clean = keyword.trim().toLowerCase();
   const kwType = type === 'exclude' ? 'exclude' : 'include';
   try {
-    const info = db.prepare("DELETE FROM keywords WHERE keyword = ? AND COALESCE(type, 'include') = ?").run(clean, kwType);
+    db.prepare("DELETE FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").run(clean, kwType);
     return true;
   } catch (e) {
     console.error('removeKeyword error:', e.message);
@@ -576,9 +582,9 @@ function removeKeyword(keyword, type = 'include') {
 
 function getKeywords() {
   try {
-    const rows = db.prepare("SELECT keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
-    const include = rows.filter(r => r.type === 'include').map(r => r.keyword);
-    const exclude = rows.filter(r => r.type === 'exclude').map(r => r.keyword);
+    const rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
+    const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
+    const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
     return { include, exclude };
   } catch (e) {
     console.error('getKeywords error:', e.message);

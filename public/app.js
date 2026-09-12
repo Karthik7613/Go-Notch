@@ -435,6 +435,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!authModal) return;
     authModal.classList.remove('hidden');
 
+    const mainAppWrapper = document.getElementById('mainAppWrapper');
+    if (mainAppWrapper) mainAppWrapper.classList.add('hidden');
+
+    const bottomNav = document.getElementById('bottomNav');
+    if (bottomNav) bottomNav.classList.add('hidden');
+
     if (authPhoneForm) authPhoneForm.classList.add('hidden');
     if (authOtpForm) authOtpForm.classList.add('hidden');
     if (authProfileForm) authProfileForm.classList.add('hidden');
@@ -469,6 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideAuthModal() {
     if (authModal) authModal.classList.add('hidden');
+
+    const mainAppWrapper = document.getElementById('mainAppWrapper');
+    if (mainAppWrapper) mainAppWrapper.classList.remove('hidden');
+
+    const bottomNav = document.getElementById('bottomNav');
+    if (bottomNav) bottomNav.classList.remove('hidden');
   }
 
   function renderUserProfile(user) {

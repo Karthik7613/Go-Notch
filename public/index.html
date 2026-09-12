@@ -265,8 +265,8 @@
     </div>
   </div>
 
-  <!-- WhatsApp Web Main App Wrapper -->
-  <div class="flex-1 flex w-full max-w-[1700px] mx-auto overflow-hidden shadow-2xl border-x border-slate-200 dark:border-slate-800 relative">
+  <!-- WhatsApp Web Main App Wrapper (Only shown after user logs in) -->
+  <div id="mainAppWrapper" class="hidden flex-1 flex w-full max-w-[1700px] mx-auto overflow-hidden shadow-2xl border-x border-slate-200 dark:border-slate-800 relative">
 
     <!-- PAGE VIEW 1: WHATSAPP FULL CHAT PAGE -->
     <div id="pageViewWhatsApp" class="page-view flex-1 flex w-full h-full overflow-hidden relative">
@@ -673,7 +673,7 @@
   </div>
 
   <!-- BOTTOM NAVIGATION BAR (1. WhatsApp, 2. Matching, 3. Keywords, 4. Profile) -->
-  <nav id="bottomNav" class="h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-2">
+  <nav id="bottomNav" class="hidden h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-2">
     <button data-tab="whatsapp" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold transition text-emerald-600 dark:text-emerald-400">
       <i data-lucide="message-circle" class="w-6 h-6 mb-0.5"></i>
       <span class="text-[11px] font-semibold">WhatsApp</span>

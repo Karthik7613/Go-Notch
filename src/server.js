@@ -285,7 +285,8 @@ app.get('/api/stats', (req, res) => {
 // Keyword Monitoring & Alerts API Routes
 app.get('/api/keywords', (req, res) => {
   try {
-    const kw = getKeywords();
+    const phone = req.query.phone || req.headers['x-user-phone'] || '';
+    const kw = getKeywords(phone);
     const scopeData = getMonitoringScope();
     res.json({ ...kw, ...scopeData });
   } catch (err) {
@@ -319,11 +320,12 @@ app.post('/api/keywords/scope', (req, res) => {
 app.post('/api/keywords', (req, res) => {
   try {
     const { keyword, type } = req.body;
+    const phone = req.body.phone || req.headers['x-user-phone'] || '';
     if (!keyword || !keyword.trim()) {
       return res.status(400).json({ error: 'keyword parameter is required' });
     }
-    const added = addKeyword(keyword, type || 'include');
-    const allKw = getKeywords();
+    const added = addKeyword(keyword, type || 'include', phone);
+    const allKw = getKeywords(phone);
     io.emit('keywords_updated', allKw);
     io.emit('keyword_alert');
     res.json({ success: added, keywords: allKw });
@@ -335,8 +337,9 @@ app.post('/api/keywords', (req, res) => {
 app.delete('/api/keywords/:keyword', (req, res) => {
   try {
     const kwType = req.query.type || 'include';
-    const removed = removeKeyword(req.params.keyword, kwType);
-    const allKw = getKeywords();
+    const phone = req.query.phone || req.headers['x-user-phone'] || '';
+    const removed = removeKeyword(req.params.keyword, kwType, phone);
+    const allKw = getKeywords(phone);
     io.emit('keywords_updated', allKw);
     io.emit('keyword_alert');
     res.json({ success: removed, keywords: allKw });
@@ -347,7 +350,8 @@ app.delete('/api/keywords/:keyword', (req, res) => {
 
 app.get('/api/keywords/alerts', (req, res) => {
   try {
-    const alerts = getKeywordAlerts(req.query.limit || 100);
+    const phone = req.query.phone || req.headers['x-user-phone'] || '';
+    const alerts = getKeywordAlerts(req.query.limit || 100, phone);
     res.json(alerts);
   } catch (err) {
     res.status(500).json({ error: err.message });

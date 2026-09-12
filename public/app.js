@@ -944,7 +944,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadKeywords() {
     try {
-      const res = await apiFetch('/api/keywords');
+      const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
+      const phoneParam = userPhone ? `?phone=${userPhone}` : '';
+      const res = await apiFetch(`/api/keywords${phoneParam}`);
       activeKeywords = await res.json();
       renderKeywordTags();
       if (activeKeywords.scope) {
@@ -962,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createTagHtml = (kw, type, colorClass, iconStr) => `
       <span class="inline-flex items-center gap-1.5 px-3 py-1 ${colorClass} border rounded-full text-xs font-semibold shadow-sm">
         ${iconStr} ${escapeHtml(kw)}
-        <button data-kw="${escapeHtml(kw)}" data-type="${type}" class="remove-kw-btn hover:text-rose-500 transition ml-0.5">
+        <button data-kw="${escapeHtml(kw)}" data-type="${type}" class="remove-kw-btn hover:text-rose-500 transition ml-0.5 cursor-pointer">
           <i data-lucide="x" class="w-3.5 h-3.5"></i>
         </button>
       </span>
@@ -1007,20 +1009,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addIncludeKeywordForm) {
     addIncludeKeywordForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = includeKeywordInput.value.trim();
+      const val = includeKeywordInput ? includeKeywordInput.value.trim() : '';
       if (!val) return;
+      if (includeKeywordInput) includeKeywordInput.value = '';
       await postKeyword(val, 'include');
-      includeKeywordInput.value = '';
     });
   }
 
   if (addExcludeKeywordForm) {
     addExcludeKeywordForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = excludeKeywordInput.value.trim();
+      const val = excludeKeywordInput ? excludeKeywordInput.value.trim() : '';
       if (!val) return;
+      if (excludeKeywordInput) excludeKeywordInput.value = '';
       await postKeyword(val, 'exclude');
-      excludeKeywordInput.value = '';
     });
   }
 
@@ -1028,20 +1030,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (pageAddIncludeKeywordForm) {
     pageAddIncludeKeywordForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = pageIncludeKeywordInput.value.trim();
+      const val = pageIncludeKeywordInput ? pageIncludeKeywordInput.value.trim() : '';
       if (!val) return;
+      if (pageIncludeKeywordInput) pageIncludeKeywordInput.value = '';
       await postKeyword(val, 'include');
-      pageIncludeKeywordInput.value = '';
     });
   }
 
   if (pageAddExcludeKeywordForm) {
     pageAddExcludeKeywordForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = pageExcludeKeywordInput.value.trim();
+      const val = pageExcludeKeywordInput ? pageExcludeKeywordInput.value.trim() : '';
       if (!val) return;
+      if (pageExcludeKeywordInput) pageExcludeKeywordInput.value = '';
       await postKeyword(val, 'exclude');
-      pageExcludeKeywordInput.value = '';
     });
   }
 
@@ -1051,8 +1053,8 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const val = modalIncludeKeywordInput ? modalIncludeKeywordInput.value.trim() : '';
       if (!val) return;
-      await postKeyword(val, 'include');
       if (modalIncludeKeywordInput) modalIncludeKeywordInput.value = '';
+      await postKeyword(val, 'include');
     });
   }
 
@@ -1061,20 +1063,37 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const val = modalExcludeKeywordInput ? modalExcludeKeywordInput.value.trim() : '';
       if (!val) return;
-      await postKeyword(val, 'exclude');
       if (modalExcludeKeywordInput) modalExcludeKeywordInput.value = '';
+      await postKeyword(val, 'exclude');
     });
   }
 
   async function postKeyword(keyword, type) {
+    if (!keyword || !keyword.trim()) return;
+    const cleanKw = keyword.trim().toLowerCase();
+    const kwType = type === 'exclude' ? 'exclude' : 'include';
+
+    // Optimistic UI update
+    if (!activeKeywords) activeKeywords = { include: [], exclude: [] };
+    if (!activeKeywords.include) activeKeywords.include = [];
+    if (!activeKeywords.exclude) activeKeywords.exclude = [];
+
+    const list = kwType === 'exclude' ? activeKeywords.exclude : activeKeywords.include;
+    const tokens = cleanKw.split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    tokens.forEach(tok => {
+      if (!list.includes(tok)) list.push(tok);
+    });
+    renderKeywordTags();
+
     try {
+      const userPhone = currentUser && currentUser.phone ? currentUser.phone : '';
       const res = await apiFetch('/api/keywords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, type })
+        body: JSON.stringify({ keyword: cleanKw, type: kwType, phone: userPhone })
       });
       const data = await res.json();
-      if (data.keywords) {
+      if (data && data.keywords) {
         activeKeywords = data.keywords;
         renderKeywordTags();
         loadKeywordAlerts();
@@ -1085,10 +1104,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function removeKeyword(kw, type) {
+    if (!kw) return;
+    const cleanKw = kw.trim().toLowerCase();
+    const kwType = type === 'exclude' ? 'exclude' : 'include';
+
+    // Optimistic UI update
+    if (activeKeywords) {
+      if (kwType === 'exclude' && activeKeywords.exclude) {
+        activeKeywords.exclude = activeKeywords.exclude.filter(k => k.toLowerCase() !== cleanKw);
+      } else if (activeKeywords.include) {
+        activeKeywords.include = activeKeywords.include.filter(k => k.toLowerCase() !== cleanKw);
+      }
+      renderKeywordTags();
+    }
+
     try {
-      const res = await apiFetch(`/api/keywords/${encodeURIComponent(kw)}?type=${encodeURIComponent(type)}`, { method: 'DELETE' });
+      const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
+      const phoneParam = userPhone ? `&phone=${userPhone}` : '';
+      const res = await apiFetch(`/api/keywords/${encodeURIComponent(cleanKw)}?type=${encodeURIComponent(kwType)}${phoneParam}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.keywords) {
+      if (data && data.keywords) {
         activeKeywords = data.keywords;
         renderKeywordTags();
         loadKeywordAlerts();
@@ -1224,7 +1259,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadKeywordAlerts() {
     try {
-      const res = await apiFetch('/api/keywords/alerts');
+      const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
+      const phoneParam = userPhone ? `?phone=${userPhone}` : '';
+      const res = await apiFetch(`/api/keywords/alerts${phoneParam}`);
       const alerts = await res.json();
       cachedAlertsData = alerts;
       renderKeywordAlerts(alerts);

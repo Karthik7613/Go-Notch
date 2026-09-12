@@ -61,6 +61,7 @@ function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       keyword TEXT NOT NULL,
       type TEXT DEFAULT 'include',
+      user_phone TEXT DEFAULT '',
       created_at INTEGER NOT NULL
     );
 
@@ -96,11 +97,34 @@ function initDb() {
   try {
     db.exec(`ALTER TABLE keywords ADD COLUMN type TEXT DEFAULT 'include';`);
   } catch (e) {}
-
-  // Clean up any duplicate keywords
+  // Migration for keywords table if it had old column-level UNIQUE constraint
   try {
-    db.exec(`DELETE FROM keywords WHERE id NOT IN (SELECT MIN(id) FROM keywords GROUP BY LOWER(keyword), COALESCE(type, 'include'));`);
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_keywords_unique ON keywords(keyword, type);`);
+    const kwTableSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='keywords'").get();
+    if (kwTableSql && kwTableSql.sql && kwTableSql.sql.includes('keyword TEXT UNIQUE')) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS keywords_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          keyword TEXT NOT NULL,
+          type TEXT DEFAULT 'include',
+          user_phone TEXT DEFAULT '',
+          created_at INTEGER NOT NULL
+        );
+        INSERT OR IGNORE INTO keywords_new (id, keyword, type, user_phone, created_at)
+          SELECT id, keyword, COALESCE(type, 'include'), COALESCE(user_phone, ''), created_at FROM keywords;
+        DROP TABLE keywords;
+        ALTER TABLE keywords_new RENAME TO keywords;
+      `);
+    }
+  } catch (e) {
+    console.error('Migration error for keywords table:', e.message);
+  }
+
+  // Drop old global unique index if present and create per-user unique index
+  try {
+    db.exec(`DROP INDEX IF EXISTS idx_keywords_unique;`);
+  } catch (e) {}
+  try {
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_keywords_user_unique ON keywords(keyword, type, user_phone);`);
   } catch (e) {}
 
   db.exec(`
@@ -568,25 +592,68 @@ function getStats() {
   };
 }
 
-function addKeyword(keyword, type = 'include') {
+const DEFAULT_INCLUDE_KEYWORDS = [
+  'chennai', 'bangalore', 'airport', 'coimbatore', 'madurai', 'hyderabad',
+  'trichy', 'salem', 'pondicherry', 'ooty', 'kodaikanal', 'munnar', 'coorg',
+  'mysore', 'calicut', 'cochin', 'tirupati', 'vellore', 'hosur', 'drop',
+  'pickup', 'round trip', 'one way', 'urgent', 'available', 'taxi', 'cab',
+  'innova', 'etios', 'ertiga', 'sedan', 'suv', 'crysta'
+];
+const DEFAULT_EXCLUDE_KEYWORDS = ['vacant', 'vacant chennai', 'free', 'going', 'reaching time'];
+
+function ensureUserHasKeywords(userPhone) {
+  if (!userPhone) return;
+  const cleanPhone = String(userPhone).replace(/\D/g, '');
+  if (!cleanPhone) return;
+
+  try {
+    const countRow = db.prepare("SELECT COUNT(*) as cnt FROM keywords WHERE user_phone = ?").get(cleanPhone);
+    if (countRow && countRow.cnt > 0) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const insertStmt = db.prepare("INSERT OR IGNORE INTO keywords (keyword, type, user_phone, created_at) VALUES (?, ?, ?, ?)");
+
+    const globalRows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL").all();
+    if (globalRows && globalRows.length > 0) {
+      for (const r of globalRows) {
+        if (r.keyword && r.keyword.trim()) {
+          insertStmt.run(r.keyword.trim().toLowerCase(), r.type || 'include', cleanPhone, now);
+        }
+      }
+    } else {
+      for (const kw of DEFAULT_INCLUDE_KEYWORDS) {
+        insertStmt.run(kw.trim().toLowerCase(), 'include', cleanPhone, now);
+      }
+      for (const kw of DEFAULT_EXCLUDE_KEYWORDS) {
+        insertStmt.run(kw.trim().toLowerCase(), 'exclude', cleanPhone, now);
+      }
+    }
+  } catch (e) {
+    console.error('ensureUserHasKeywords error:', e.message);
+  }
+}
+
+function addKeyword(keyword, type = 'include', userPhone = '') {
   if (!keyword || !keyword.trim()) return false;
   const kwType = type === 'exclude' ? 'exclude' : 'include';
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
   
+  if (cleanPhone) {
+    ensureUserHasKeywords(cleanPhone);
+  }
+
   // Support comma, semicolon, newline or slash separated tokens
   const parts = keyword.split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
   if (parts.length === 0) return false;
 
   let anyAdded = false;
-  const insertStmt = db.prepare('INSERT OR IGNORE INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)');
+  const insertStmt = db.prepare('INSERT OR IGNORE INTO keywords (keyword, type, user_phone, created_at) VALUES (?, ?, ?, ?)');
   const now = Math.floor(Date.now() / 1000);
 
   for (const clean of parts) {
     try {
-      const existing = db.prepare("SELECT id FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
-      if (!existing) {
-        insertStmt.run(clean, kwType, now);
-        anyAdded = true;
-      }
+      const info = insertStmt.run(clean, kwType, cleanPhone, now);
+      if (info.changes > 0) anyAdded = true;
     } catch (e) {
       console.error('addKeyword token error:', clean, e.message);
     }
@@ -594,12 +661,22 @@ function addKeyword(keyword, type = 'include') {
   return true;
 }
 
-function removeKeyword(keyword, type = 'include') {
+function removeKeyword(keyword, type = 'include', userPhone = '') {
   if (!keyword) return false;
   const clean = keyword.trim().toLowerCase();
   const kwType = type === 'exclude' ? 'exclude' : 'include';
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  
+  if (cleanPhone) {
+    ensureUserHasKeywords(cleanPhone);
+  }
+
   try {
-    db.prepare("DELETE FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").run(clean, kwType);
+    if (cleanPhone) {
+      db.prepare("DELETE FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ? AND user_phone = ?").run(clean, kwType, cleanPhone);
+    } else {
+      db.prepare("DELETE FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ? AND (user_phone = '' OR user_phone IS NULL)").run(clean, kwType);
+    }
     return true;
   } catch (e) {
     console.error('removeKeyword error:', e.message);
@@ -607,9 +684,19 @@ function removeKeyword(keyword, type = 'include') {
   }
 }
 
-function getKeywords() {
+function getKeywords(userPhone = '') {
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
   try {
-    const rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
+    if (cleanPhone) {
+      ensureUserHasKeywords(cleanPhone);
+    }
+
+    let rows = [];
+    if (cleanPhone) {
+      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = ? ORDER BY id ASC").all(cleanPhone);
+    } else {
+      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL ORDER BY id ASC").all();
+    }
     const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
     const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
     return { include, exclude };
@@ -677,8 +764,8 @@ function setMonitoringScope(scope) {
   }
 }
 
-function getKeywordAlerts(limit = 100) {
-  const { include, exclude } = getKeywords();
+function getKeywordAlerts(limit = 100, userPhone = '') {
+  const { include, exclude } = getKeywords(userPhone);
   if (!include || include.length === 0) return [];
 
   const clearedTime = getClearedMatchingTimestamp();

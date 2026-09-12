@@ -266,10 +266,23 @@ app.post('/api/logout', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err.message || err);
+});
 
-server.listen(PORT, async () => {
-  console.log(`\n🚀 WhatsApp Message Monitor Server running at http://localhost:${PORT}`);
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Unhandled Rejection:', reason?.message || reason);
+});
+
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
+
+server.listen(PORT, HOST, async () => {
+  console.log(`\n🚀 WhatsApp Message Monitor Server running at http://${HOST}:${PORT}`);
   console.log('📱 Connecting to WhatsApp Web client...\n');
-  await connectToWhatsApp();
+  try {
+    await connectToWhatsApp();
+  } catch (e) {
+    console.error('Error connecting to WhatsApp on startup:', e.message);
+  }
 });

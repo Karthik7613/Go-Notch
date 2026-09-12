@@ -1,14 +1,19 @@
 const prism = require('prism-media');
-const { pipeline } = require('@xenova/transformers');
 const fs = require('fs');
 
 let localTranscriber = null;
 
 async function getTranscriber() {
   if (!localTranscriber) {
-    console.log('⚡ Loading local Xenova Whisper AI speech recognition model...');
-    localTranscriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
-    console.log('✅ Local Whisper AI model ready!');
+    try {
+      console.log('⚡ Loading local Xenova Whisper AI speech recognition model...');
+      const { pipeline } = await import('@xenova/transformers');
+      localTranscriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+      console.log('✅ Local Whisper AI model ready!');
+    } catch (err) {
+      console.warn('⚠️ Whisper AI model initialization skipped:', err.message);
+      return null;
+    }
   }
   return localTranscriber;
 }

@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err.stack || err.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Unhandled Rejection:', reason?.stack || reason?.message || reason);
+});
+
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -264,14 +272,6 @@ app.post('/api/logout', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Exception:', err.message || err);
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('💥 Unhandled Rejection:', reason?.message || reason);
 });
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;

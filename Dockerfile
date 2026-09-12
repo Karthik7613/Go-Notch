@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 # Install system build dependencies, ONNX runtime dependencies (libgomp1) and ffmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     gcc \
     libgomp1 \
+    libc++1 \
+    ca-certificates \
     ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*

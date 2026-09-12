@@ -25,7 +25,12 @@ const {
   getMonitoringScope,
   setMonitoringScope,
   getKeywordAlerts,
-  clearKeywordAlerts
+  clearKeywordAlerts,
+  findUserByPhone,
+  createUser,
+  updateUserProfile,
+  saveOtp,
+  verifyOtp
 } = require('./database');
 const { 
   setSocketIO, 
@@ -60,6 +65,129 @@ io.on('connection', (socket) => {
   console.log('⚡ Client connected to Socket.io dashboard:', socket.id);
   socket.emit('status_update', getStatus());
 });
+
+// Authentication API Routes (Mobile Number + OTP + Profile Setup)
+app.post('/api/auth/send-otp', (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
+    }
+
+    const existingUser = findUserByPhone(cleanPhone);
+    const isNewUser = !existingUser;
+    
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    saveOtp(cleanPhone, otp, 600); // 10 mins expiry
+
+    console.log(`🔑 OTP generated for ${cleanPhone}: ${otp} (isNewUser: ${isNewUser})`);
+
+    res.json({
+      success: true,
+      phone: cleanPhone,
+      isNewUser,
+      otp, // Provided for easy preview and automated testing
+      message: isNewUser ? 'OTP sent for registration' : 'OTP sent for login'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/verify-otp', (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ error: 'Mobile number and OTP are required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const isValid = verifyOtp(cleanPhone, otp);
+    
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid or expired OTP. Please try again or use 1234.' });
+    }
+
+    const existingUser = findUserByPhone(cleanPhone);
+    if (existingUser) {
+      const token = `tok_${cleanPhone}_${Date.now()}`;
+      return res.json({
+        success: true,
+        isNewUser: false,
+        user: existingUser,
+        token
+      });
+    } else {
+      return res.json({
+        success: true,
+        isNewUser: true,
+        phone: cleanPhone,
+        message: 'OTP verified. Please complete your profile.'
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/complete-profile', (req, res) => {
+  try {
+    const { phone, name, gender } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Username / Full Name is required' });
+    }
+
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const user = createUser(cleanPhone, name.trim(), gender || 'Male');
+    const token = `tok_${cleanPhone}_${Date.now()}`;
+
+    res.json({
+      success: true,
+      user,
+      token
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const phone = req.query.phone || req.headers['x-user-phone'];
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone identifier required' });
+    }
+    const user = findUserByPhone(phone);
+    if (!user) {
+      return res.status(404).json({ error: 'User profile not found' });
+    }
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/update-profile', (req, res) => {
+  try {
+    const { phone, name, gender } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone identifier required' });
+    }
+    const updated = updateUserProfile(phone, name, gender);
+    res.json({ success: true, user: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// WhatsApp & Dashboard API Routes
 
 // API Routes
 app.get('/api/status', (req, res) => {

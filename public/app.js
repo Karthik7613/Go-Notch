@@ -29,14 +29,46 @@ document.addEventListener('DOMContentLoaded', () => {
   let serverUrl = getStoredServerUrl();
   let socket = null;
 
-  function apiFetch(urlPath, options) {
+  // User Authentication State
+  let currentUser = null;
+  let pendingAuthPhone = '';
+
+  function getStoredUser() {
+    try {
+      const stored = localStorage.getItem('auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setStoredUser(user, token) {
+    if (!user) return;
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    if (token) localStorage.setItem('auth_token', token);
+    currentUser = user;
+    renderUserProfile(user);
+  }
+
+  function clearStoredUser() {
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
+    currentUser = null;
+  }
+
+  function apiFetch(urlPath, options = {}) {
     let targetUrl = urlPath;
     if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') {
       if (!urlPath.startsWith('http://') && !urlPath.startsWith('https://')) {
         targetUrl = `${serverUrl}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
       }
     }
-    return fetch(targetUrl, options);
+    const token = localStorage.getItem('auth_token');
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (currentUser && currentUser.phone) headers['x-user-phone'] = currentUser.phone;
+
+    return fetch(targetUrl, { ...options, headers });
   }
 
   // State
@@ -354,18 +386,370 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalActiveExcludeKeywordTags = document.getElementById('modalActiveExcludeKeywordTags');
 
 
-  // DOM Elements - Profile Page Specific
-  const pageProfileName = document.getElementById('pageProfileName');
-  const pageProfileWAName = document.getElementById('pageProfileWAName');
-  const pageProfileWAPhone = document.getElementById('pageProfileWAPhone');
-  const pageProfileWAStatus = document.getElementById('pageProfileWAStatus');
-  const pageProfileTotalMsgs = document.getElementById('pageProfileTotalMsgs');
-  const pageProfileTotalAlerts = document.getElementById('pageProfileTotalAlerts');
-  const pageProfileSavedCount = document.getElementById('pageProfileSavedCount');
-  const pageProfileScanQRBtn = document.getElementById('pageProfileScanQRBtn');
-  const pageProfileLogoutBtn = document.getElementById('pageProfileLogoutBtn');
-  const pageProfileThemeBtn = document.getElementById('pageProfileThemeBtn');
+  // DOM Elements - User Authentication & Profile Setup
+  const authModal = document.getElementById('authModal');
+  const authModalTitle = document.getElementById('authModalTitle');
+  const authModalSubtitle = document.getElementById('authModalSubtitle');
 
+  const authPhoneForm = document.getElementById('authPhoneForm');
+  const authPhoneInput = document.getElementById('authPhoneInput');
+  const authSendOtpBtn = document.getElementById('authSendOtpBtn');
+
+  const authOtpForm = document.getElementById('authOtpForm');
+  const authOtpDisplayPhone = document.getElementById('authOtpDisplayPhone');
+  const authChangePhoneBtn = document.getElementById('authChangePhoneBtn');
+  const authOtpCodeHint = document.getElementById('authOtpCodeHint');
+  const authOtpCodeValue = document.getElementById('authOtpCodeValue');
+  const authOtpInput = document.getElementById('authOtpInput');
+  const authVerifyOtpBtn = document.getElementById('authVerifyOtpBtn');
+  const authResendOtpBtn = document.getElementById('authResendOtpBtn');
+
+  const authProfileForm = document.getElementById('authProfileForm');
+  const authProfileNameInput = document.getElementById('authProfileNameInput');
+  const authCompleteProfileBtn = document.getElementById('authCompleteProfileBtn');
+
+  // Edit Profile Modal Elements
+  const editProfileModal = document.getElementById('editProfileModal');
+  const closeEditProfileModalBtn = document.getElementById('closeEditProfileModalBtn');
+  const editProfileForm = document.getElementById('editProfileForm');
+  const editProfilePhone = document.getElementById('editProfilePhone');
+  const editProfileNameInput = document.getElementById('editProfileNameInput');
+  const cancelEditProfileBtn = document.getElementById('cancelEditProfileBtn');
+
+  // DOM Elements - Profile Page Specific
+  const pageProfileAvatar = document.getElementById('pageProfileAvatar');
+  const pageProfileGenderBadge = document.getElementById('pageProfileGenderBadge');
+  const pageProfileUserName = document.getElementById('pageProfileUserName');
+  const pageProfileUserPhone = document.getElementById('pageProfileUserPhone');
+  const pageProfileUserGender = document.getElementById('pageProfileUserGender');
+  const pageProfileEditBtn = document.getElementById('pageProfileEditBtn');
+  const profileEditModalTriggerBtn = document.getElementById('profileEditModalTriggerBtn');
+  const pageProfileWAStatusBadge = document.getElementById('pageProfileWAStatusBadge');
+  const pageProfileWAAccountDesc = document.getElementById('pageProfileWAAccountDesc');
+  const profileOpenWAModalBtn = document.getElementById('profileOpenWAModalBtn');
+  const profileManageKeywordsBtn = document.getElementById('profileManageKeywordsBtn');
+  const pageProfileLogoutBtn = document.getElementById('pageProfileLogoutBtn');
+
+  // Auth Modal Flow Controller
+  function showAuthStep(step) {
+    if (!authModal) return;
+    authModal.classList.remove('hidden');
+
+    if (authPhoneForm) authPhoneForm.classList.add('hidden');
+    if (authOtpForm) authOtpForm.classList.add('hidden');
+    if (authProfileForm) authProfileForm.classList.add('hidden');
+
+    if (step === 'phone') {
+      if (authPhoneForm) authPhoneForm.classList.remove('hidden');
+      if (authModalTitle) authModalTitle.textContent = 'Go-Notch Trip Monitor';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Login with your mobile number to access real-time WhatsApp trips';
+      if (authPhoneInput) {
+        authPhoneInput.value = '';
+        setTimeout(() => authPhoneInput.focus(), 100);
+      }
+    } else if (step === 'otp') {
+      if (authOtpForm) authOtpForm.classList.remove('hidden');
+      if (authModalTitle) authModalTitle.textContent = 'Verification Code';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter the 4-digit code sent to your mobile number';
+      if (authOtpInput) {
+        authOtpInput.value = '';
+        setTimeout(() => authOtpInput.focus(), 100);
+      }
+    } else if (step === 'profile') {
+      if (authProfileForm) authProfileForm.classList.remove('hidden');
+      if (authModalTitle) authModalTitle.textContent = 'Profile Setup';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your username and gender to complete registration';
+      if (authProfileNameInput) {
+        authProfileNameInput.value = '';
+        setTimeout(() => authProfileNameInput.focus(), 100);
+      }
+    }
+    safeCreateIcons();
+  }
+
+  function hideAuthModal() {
+    if (authModal) authModal.classList.add('hidden');
+  }
+
+  function renderUserProfile(user) {
+    if (!user) return;
+    if (pageProfileUserName) pageProfileUserName.textContent = user.name || 'User';
+    if (pageProfileUserPhone) {
+      const p = (user.phone || '').replace(/\D/g, '');
+      pageProfileUserPhone.textContent = p.length >= 10 ? `+91 ${p.slice(-10)}` : `+91 ${p}`;
+    }
+    if (pageProfileUserGender) pageProfileUserGender.textContent = user.gender || 'Male';
+
+    if (pageProfileAvatar) {
+      pageProfileAvatar.textContent = (user.name || 'U').charAt(0).toUpperCase();
+    }
+    if (pageProfileGenderBadge) {
+      if (user.gender === 'Female') pageProfileGenderBadge.textContent = '👩';
+      else if (user.gender === 'Other') pageProfileGenderBadge.textContent = '🧑';
+      else pageProfileGenderBadge.textContent = '👨';
+    }
+  }
+
+  // Handle Gender Selection Pill Highlighting
+  function initGenderPills() {
+    document.querySelectorAll('.gender-radio').forEach(radio => {
+      radio.addEventListener('change', () => {
+        document.querySelectorAll('.gender-pill-label').forEach(label => label.classList.remove('active'));
+        const parent = radio.closest('.gender-pill-label');
+        if (parent && radio.checked) parent.classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('input[name="editGender"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        document.querySelectorAll('.edit-gender-pill').forEach(label => label.classList.remove('active'));
+        const parent = radio.closest('.edit-gender-pill');
+        if (parent && radio.checked) parent.classList.add('active');
+      });
+    });
+  }
+  initGenderPills();
+
+  // 1. Phone Form Submit Handler
+  if (authPhoneForm) {
+    authPhoneForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawPhone = authPhoneInput.value.trim();
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      if (cleanPhone.length < 10) {
+        alert('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+
+      const origBtnHtml = authSendOtpBtn.innerHTML;
+      authSendOtpBtn.disabled = true;
+      authSendOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Sending Code...</span>`;
+
+      try {
+        const res = await apiFetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: cleanPhone })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          pendingAuthPhone = cleanPhone;
+          if (authOtpDisplayPhone) authOtpDisplayPhone.textContent = `+91 ${cleanPhone.slice(-10)}`;
+          if (authOtpCodeValue && data.otp) authOtpCodeValue.textContent = data.otp;
+          showAuthStep('otp');
+        } else {
+          alert(data.error || 'Failed to send OTP. Please try again.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      } finally {
+        authSendOtpBtn.disabled = false;
+        authSendOtpBtn.innerHTML = origBtnHtml;
+        safeCreateIcons();
+      }
+    });
+  }
+
+  // 2. Change Phone Button
+  if (authChangePhoneBtn) {
+    authChangePhoneBtn.addEventListener('click', () => {
+      showAuthStep('phone');
+    });
+  }
+
+  // 3. Resend OTP Button
+  if (authResendOtpBtn) {
+    authResendOtpBtn.addEventListener('click', async () => {
+      if (!pendingAuthPhone) return;
+      authResendOtpBtn.textContent = 'Resending...';
+      try {
+        const res = await apiFetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pendingAuthPhone })
+        });
+        const data = await res.json();
+        if (data.otp && authOtpCodeValue) authOtpCodeValue.textContent = data.otp;
+        authResendOtpBtn.textContent = 'Code resent successfully!';
+        setTimeout(() => { authResendOtpBtn.textContent = "Didn't receive code? Resend OTP"; }, 3000);
+      } catch (e) {
+        authResendOtpBtn.textContent = "Didn't receive code? Resend OTP";
+      }
+    });
+  }
+
+  // 4. OTP Form Submit Handler
+  if (authOtpForm) {
+    authOtpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const otp = authOtpInput.value.trim();
+      if (!otp) return;
+
+      const origBtnHtml = authVerifyOtpBtn.innerHTML;
+      authVerifyOtpBtn.disabled = true;
+      authVerifyOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Verifying...</span>`;
+
+      try {
+        const res = await apiFetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pendingAuthPhone, otp })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          if (data.isNewUser) {
+            // Prompt Profile Setup Page for new users
+            showAuthStep('profile');
+          } else {
+            // Existing user logged in directly
+            setStoredUser(data.user, data.token);
+            hideAuthModal();
+            loadStats();
+            loadThreads();
+            loadKeywords();
+            loadKeywordAlerts();
+          }
+        } else {
+          alert(data.error || 'Invalid OTP. Please try again or use 1234.');
+        }
+      } catch (err) {
+        alert('Verification error. Please try again.');
+      } finally {
+        authVerifyOtpBtn.disabled = false;
+        authVerifyOtpBtn.innerHTML = origBtnHtml;
+        safeCreateIcons();
+      }
+    });
+  }
+
+  // 5. New User Profile Form Submit Handler
+  if (authProfileForm) {
+    authProfileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = authProfileNameInput.value.trim();
+      const selectedGenderRadio = document.querySelector('input[name="authGender"]:checked');
+      const gender = selectedGenderRadio ? selectedGenderRadio.value : 'Male';
+
+      if (!name) {
+        alert('Please enter your username / full name.');
+        return;
+      }
+
+      const origBtnHtml = authCompleteProfileBtn.innerHTML;
+      authCompleteProfileBtn.disabled = true;
+      authCompleteProfileBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Saving Profile...</span>`;
+
+      try {
+        const res = await apiFetch('/api/auth/complete-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pendingAuthPhone, name, gender })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setStoredUser(data.user, data.token);
+          hideAuthModal();
+          loadStats();
+          loadThreads();
+          loadKeywords();
+          loadKeywordAlerts();
+        } else {
+          alert(data.error || 'Failed to save profile. Please try again.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      } finally {
+        authCompleteProfileBtn.disabled = false;
+        authCompleteProfileBtn.innerHTML = origBtnHtml;
+        safeCreateIcons();
+      }
+    });
+  }
+
+  // Edit Profile Modal Open & Handlers
+  function openEditProfileModal() {
+    if (!currentUser) return;
+    if (editProfilePhone) editProfilePhone.value = `+91 ${(currentUser.phone || '').slice(-10)}`;
+    if (editProfileNameInput) editProfileNameInput.value = currentUser.name || '';
+    
+    const targetGender = currentUser.gender || 'Male';
+    document.querySelectorAll('input[name="editGender"]').forEach(radio => {
+      radio.checked = (radio.value === targetGender);
+      const parent = radio.closest('.edit-gender-pill');
+      if (parent) {
+        if (radio.checked) parent.classList.add('active');
+        else parent.classList.remove('active');
+      }
+    });
+
+    if (editProfileModal) editProfileModal.classList.remove('hidden');
+    safeCreateIcons();
+  }
+
+  function closeEditProfileModal() {
+    if (editProfileModal) editProfileModal.classList.add('hidden');
+  }
+
+  if (pageProfileEditBtn) pageProfileEditBtn.addEventListener('click', openEditProfileModal);
+  if (profileEditModalTriggerBtn) profileEditModalTriggerBtn.addEventListener('click', openEditProfileModal);
+  if (closeEditProfileModalBtn) closeEditProfileModalBtn.addEventListener('click', closeEditProfileModal);
+  if (cancelEditProfileBtn) cancelEditProfileBtn.addEventListener('click', closeEditProfileModal);
+
+  if (editProfileForm) {
+    editProfileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const name = editProfileNameInput.value.trim();
+      const selectedRadio = document.querySelector('input[name="editGender"]:checked');
+      const gender = selectedRadio ? selectedRadio.value : (currentUser.gender || 'Male');
+
+      if (!name) return;
+
+      try {
+        const res = await apiFetch('/api/auth/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: currentUser.phone, name, gender })
+        });
+        const data = await res.json();
+        if (data.success && data.user) {
+          setStoredUser(data.user);
+          closeEditProfileModal();
+        }
+      } catch (err) {
+        alert('Failed to update profile.');
+      }
+    });
+  }
+
+  // Manage Keywords Shortcut from Profile Tab
+  if (profileManageKeywordsBtn) {
+    profileManageKeywordsBtn.addEventListener('click', () => {
+      switchTab('keywords');
+    });
+  }
+
+  // Open WhatsApp Modal from Profile Tab
+  if (profileOpenWAModalBtn) {
+    profileOpenWAModalBtn.addEventListener('click', () => {
+      if (qrModal) qrModal.classList.remove('hidden');
+    });
+  }
+
+  // User Session Logout Handler (Does NOT disconnect server WhatsApp connection!)
+  if (pageProfileLogoutBtn) {
+    pageProfileLogoutBtn.addEventListener('click', () => {
+      if (confirm('Log out from your user account? WhatsApp will remain actively connected on the server.')) {
+        clearStoredUser();
+        showAuthStep('phone');
+      }
+    });
+  }
 
   // Active Chat Conversation View DOM Elements
   const noChatSelected = document.getElementById('noChatSelected');
@@ -457,37 +841,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateProfilePageData() {
-    // Header name
-    if (pageProfileName) pageProfileName.textContent = waAccountName || 'WhatsApp Monitor';
-
-    // WA connection status badge
-    if (pageProfileWAStatus) {
+    if (currentUser) {
+      renderUserProfile(currentUser);
+    }
+    // WA connection status badge in profile
+    if (pageProfileWAStatusBadge && pageProfileWAAccountDesc) {
       if (isConnected) {
-        pageProfileWAStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
-        pageProfileWAStatus.className = 'flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0';
+        pageProfileWAStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
+        pageProfileWAStatusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300';
+        pageProfileWAAccountDesc.textContent = waAccountName ? `Connected as ${waAccountName} (${waAccountPhone})` : 'Connected & Synced';
       } else {
-        pageProfileWAStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Scan QR`;
-        pageProfileWAStatus.className = 'flex items-center gap-1.5 text-[11px] font-bold text-amber-500 flex-shrink-0';
+        pageProfileWAStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Scan QR`;
+        pageProfileWAStatusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300';
+        pageProfileWAAccountDesc.textContent = 'WhatsApp QR scan required';
       }
     }
-  }
-
-  // WA card opens QR modal
-  const profileWACardBtn = document.getElementById('profileWACardBtn');
-  if (profileWACardBtn) {
-    profileWACardBtn.addEventListener('click', () => {
-      if (qrModal) qrModal.classList.remove('hidden');
-    });
-  }
-
-
-
-  if (pageProfileLogoutBtn) {
-    pageProfileLogoutBtn.addEventListener('click', async () => {
-      if (confirm('Disconnect WhatsApp and remove local session?')) {
-        await triggerLogoutAndReset();
-      }
-    });
   }
 
   // ---- Bottom Sheet helpers ----
@@ -1906,9 +2274,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initial Data Load
-  loadStats();
-  loadThreads();
-  loadKeywords();
-  loadKeywordAlerts();
+  // Initial Auth & Data Load
+  function initAppSession() {
+    currentUser = getStoredUser();
+    if (!currentUser) {
+      showAuthStep('phone');
+    } else {
+      hideAuthModal();
+      renderUserProfile(currentUser);
+      loadStats();
+      loadThreads();
+      loadKeywords();
+      loadKeywordAlerts();
+    }
+  }
+
+  initAppSession();
 });

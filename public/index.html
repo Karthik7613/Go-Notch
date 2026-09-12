@@ -20,6 +20,164 @@
 </head>
 <body class="bg-slate-100 dark:bg-wa-dark text-slate-800 dark:text-slate-100 h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200">
 
+  <!-- Fullscreen User Login / OTP / Profile Setup Modal -->
+  <div id="authModal" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative transition-all">
+      
+      <!-- Brand Logo Header -->
+      <div class="text-center space-y-2">
+        <div class="inline-flex p-3.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/20 shadow-sm">
+          <i data-lucide="shield-check" class="w-8 h-8"></i>
+        </div>
+        <h2 id="authModalTitle" class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Go-Notch Trip Monitor</h2>
+        <p id="authModalSubtitle" class="text-slate-500 dark:text-slate-400 text-xs">Login with your mobile number to access real-time WhatsApp trips</p>
+      </div>
+
+      <!-- STEP 1: MOBILE NUMBER INPUT -->
+      <form id="authPhoneForm" class="space-y-4">
+        <div class="space-y-1.5 text-left">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number</label>
+          <div class="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 overflow-hidden focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition">
+            <span class="inline-flex items-center px-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs border-r border-slate-200 dark:border-slate-700 select-none">
+              🇮🇳 +91
+            </span>
+            <input type="tel" id="authPhoneInput" maxlength="10" placeholder="Enter 10-digit mobile number" class="w-full bg-transparent px-3.5 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" autofocus required>
+          </div>
+          <p class="text-[11px] text-slate-400">If you are new, we will guide you through profile setup after verification.</p>
+        </div>
+
+        <button type="submit" id="authSendOtpBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+          <span>Get Verification Code</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- STEP 2: OTP VERIFICATION -->
+      <form id="authOtpForm" class="hidden space-y-4 text-left">
+        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium">
+            <i data-lucide="smartphone" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+            <span>Sent to <strong id="authOtpDisplayPhone">+91 XXXXXXXXXX</strong></span>
+          </div>
+          <button type="button" id="authChangePhoneBtn" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">Change</button>
+        </div>
+
+        <!-- Helpful Quick Test OTP Badge -->
+        <div id="authOtpCodeHint" class="p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/20 rounded-xl text-center">
+          <p class="text-xs text-blue-700 dark:text-blue-300">Your OTP code is: <strong id="authOtpCodeValue" class="text-sm font-mono tracking-widest text-blue-800 dark:text-blue-200">1234</strong> (or use 1234)</p>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Enter 4-Digit OTP</label>
+          <input type="text" id="authOtpInput" maxlength="6" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center text-xl font-bold tracking-[0.4em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition" required>
+        </div>
+
+        <button type="submit" id="authVerifyOtpBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+          <span>Verify & Continue</span>
+          <i data-lucide="check" class="w-4 h-4"></i>
+        </button>
+
+        <div class="text-center pt-1">
+          <button type="button" id="authResendOtpBtn" class="text-xs font-semibold text-slate-500 hover:text-emerald-600 dark:text-slate-400 transition">
+            Didn't receive code? Resend OTP
+          </button>
+        </div>
+      </form>
+
+      <!-- STEP 3: NEW USER PROFILE SETUP -->
+      <form id="authProfileForm" class="hidden space-y-4 text-left">
+        <div class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-500 flex-shrink-0"></i>
+          <span>Welcome! Set up your profile to start monitoring trips.</span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Full Name / Username</label>
+          <div class="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 mr-2.5"></i>
+            <input type="text" id="authProfileNameInput" placeholder="e.g. John Doe / Captain Alex" class="w-full bg-transparent text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" required>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Gender</label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+              <input type="radio" name="authGender" value="Male" checked class="hidden gender-radio">
+              <i data-lucide="user-check" class="w-5 h-5 text-slate-500 mb-1"></i>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Male</span>
+            </label>
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+              <input type="radio" name="authGender" value="Female" class="hidden gender-radio">
+              <i data-lucide="heart" class="w-5 h-5 text-slate-500 mb-1"></i>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Female</span>
+            </label>
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+              <input type="radio" name="authGender" value="Other" class="hidden gender-radio">
+              <i data-lucide="users" class="w-5 h-5 text-slate-500 mb-1"></i>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Other</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" id="authCompleteProfileBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+          <span>Complete & Enter App</span>
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div id="editProfileModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
+      <button id="closeEditProfileModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-left space-y-1">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Edit Profile Details</h3>
+        <p class="text-xs text-slate-400">Update your username or gender preferences</p>
+      </div>
+
+      <form id="editProfileForm" class="space-y-4 text-left">
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number (Read-only)</label>
+          <input type="text" id="editProfilePhone" disabled class="w-full bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-500 font-semibold cursor-not-allowed">
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Username / Full Name</label>
+          <input type="text" id="editProfileNameInput" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-emerald-500" required>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Gender</label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+              <input type="radio" name="editGender" value="Male" class="hidden">
+              <span>Male</span>
+            </label>
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+              <input type="radio" name="editGender" value="Female" class="hidden">
+              <span>Female</span>
+            </label>
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+              <input type="radio" name="editGender" value="Other" class="hidden">
+              <span>Other</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="cancelEditProfileBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- QR Code Scan Modal -->
   <div id="qrModal" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-lg z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative">
@@ -392,61 +550,120 @@
   </div>
 
     <!-- PAGE VIEW 4: PROFILE PAGE (Dedicated Account Profile Page) -->
-    <div id="pageViewProfile" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
+    <div id="pageViewProfile" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-slate-50 dark:bg-wa-dark">
 
-      <!-- Header: Name -->
-      <div class="px-5 pt-8 pb-4 bg-white dark:bg-slate-900">
-        <h1 id="pageProfileName" class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">WhatsApp Monitor</h1>
-      </div>
-
-      <!-- WhatsApp Connected Card -->
-      <!-- WhatsApp Connected Card — single interactive row -->
-      <button id="profileWACardBtn" class="mx-4 mb-4 w-[calc(100%-2rem)] bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-[0.98] transition text-left">
-        <div class="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0">
-          <i data-lucide="message-circle" class="w-5 h-5 text-white"></i>
+      <!-- Apple-Style User Profile Header Card -->
+      <div class="px-5 pt-7 pb-5 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800">
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <div id="pageProfileAvatar" class="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-extrabold text-2xl flex items-center justify-center shadow-md">
+              U
+            </div>
+            <span id="pageProfileGenderBadge" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-900 flex items-center justify-center text-xs shadow-sm">
+              👨
+            </span>
+          </div>
+          
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 id="pageProfileUserName" class="text-xl font-bold text-slate-900 dark:text-white truncate">Loading User...</h2>
+              <button id="pageProfileEditBtn" title="Edit Profile" class="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <p id="pageProfileUserPhone" class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono tracking-wide">+91 ----------</p>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span id="pageProfileUserGender" class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                Male
+              </span>
+              <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                Active Member
+              </span>
+            </div>
+          </div>
         </div>
-        <span class="flex-1 text-sm font-semibold text-slate-800 dark:text-white">Web WhatsApp Connected</span>
-        <span id="pageProfileWAStatus" class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          Connected
-        </span>
-      </button>
-
-
-      <!-- Settings list rows -->
-      <div class="mx-4 mb-4 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-200 dark:divide-slate-700">
-        <button id="profileHelpBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
-          <i data-lucide="help-circle" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-slate-800 dark:text-white">Help</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Docs and support</p>
-          </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-        </button>
-        <button id="profilePrivacyBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
-          <i data-lucide="shield-check" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-slate-800 dark:text-white">Privacy</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Data and permissions</p>
-          </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-        </button>
-        <button id="profileFeedbackBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-left">
-          <i data-lucide="message-square" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-slate-800 dark:text-white">Feedback</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Share your thoughts</p>
-          </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-        </button>
       </div>
 
-      <!-- Logout — separate card -->
-      <div class="mx-4 mb-6 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden">
-        <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left">
-          <i data-lucide="log-out" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
-          <span class="text-sm font-semibold text-rose-600 dark:text-rose-400">Disconnect Account</span>
-        </button>
+      <div class="p-4 space-y-4 max-w-2xl mx-auto w-full">
+
+        <!-- WhatsApp Connection Status Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <i data-lucide="message-circle" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">WhatsApp Integration</h3>
+                <p id="pageProfileWAAccountDesc" class="text-xs text-slate-500 dark:text-slate-400">Checking connection...</p>
+              </div>
+            </div>
+            <span id="pageProfileWAStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Connected
+            </span>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Shared background sync is active</span>
+            <button id="profileOpenWAModalBtn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+              <span>Device Info</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Application Features & Scope Navigation -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/60 border border-slate-200 dark:border-slate-700 shadow-sm">
+          
+          <button id="profileEditModalTriggerBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+            <i data-lucide="user-cog" class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"></i>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-slate-800 dark:text-white">Edit Profile</p>
+              <p class="text-[11px] text-slate-400">Change username or gender</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+
+          <button id="profileManageKeywordsBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+            <i data-lucide="sliders-horizontal" class="w-5 h-5 text-indigo-500 flex-shrink-0"></i>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-slate-800 dark:text-white">Trip Match & Exclude Keywords</p>
+              <p class="text-[11px] text-slate-400">Configure search filters</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+
+          <button id="profileHelpBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+            <i data-lucide="help-circle" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-slate-800 dark:text-white">Help & User Guide</p>
+              <p class="text-[11px] text-slate-400">How to use and connect</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+
+          <button id="profilePrivacyBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+            <i data-lucide="shield-check" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
+            <div class="flex-1">
+              <p class="text-xs font-bold text-slate-800 dark:text-white">Privacy & Permissions</p>
+              <p class="text-[11px] text-slate-400">Data stored locally on server</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+        </div>
+
+        <!-- User Logout Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
+          <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left">
+            <i data-lucide="log-out" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
+            <div class="flex-1">
+              <span class="text-xs font-bold text-rose-600 dark:text-rose-400">Log Out User Session</span>
+              <p class="text-[10px] text-slate-400">Returns to mobile login (WhatsApp remains connected)</p>
+            </div>
+          </button>
+        </div>
+
       </div>
 
     </div>

@@ -68,6 +68,22 @@ function initDb() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT UNIQUE NOT NULL,
+      name TEXT,
+      gender TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS otps (
+      phone TEXT PRIMARY KEY,
+      otp TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
 
   // Migration for existing tables
@@ -736,6 +752,91 @@ function getKeywordAlerts(limit = 100) {
   }
 }
 
+function findUserByPhone(phone) {
+  if (!phone) return null;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  try {
+    return db.prepare('SELECT * FROM users WHERE phone = ? OR phone = ? OR phone = ?').get(cleanPhone, `+${cleanPhone}`, `91${cleanPhone}`);
+  } catch (e) {
+    console.error('findUserByPhone error:', e.message);
+    return null;
+  }
+}
+
+function createUser(phone, name, gender = 'Male') {
+  if (!phone) return null;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const existing = findUserByPhone(cleanPhone);
+    if (existing) {
+      db.prepare('UPDATE users SET name = ?, gender = ?, updated_at = ? WHERE id = ?')
+        .run(name || existing.name, gender || existing.gender, now, existing.id);
+      return findUserByPhone(cleanPhone);
+    }
+    const info = db.prepare('INSERT INTO users (phone, name, gender, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+      .run(cleanPhone, name || 'User', gender || 'Male', now, now);
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+  } catch (e) {
+    console.error('createUser error:', e.message);
+    return null;
+  }
+}
+
+function updateUserProfile(phone, name, gender) {
+  if (!phone) return null;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), updated_at = ? WHERE phone = ? OR phone = ?')
+      .run(name || null, gender || null, now, cleanPhone, `91${cleanPhone}`);
+    return findUserByPhone(cleanPhone);
+  } catch (e) {
+    console.error('updateUserProfile error:', e.message);
+    return null;
+  }
+}
+
+function saveOtp(phone, otp, ttlSeconds = 600) {
+  if (!phone || !otp) return false;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + ttlSeconds;
+  try {
+    db.prepare('INSERT OR REPLACE INTO otps (phone, otp, expires_at, created_at) VALUES (?, ?, ?, ?)')
+      .run(cleanPhone, String(otp).trim(), expiresAt, now);
+    return true;
+  } catch (e) {
+    console.error('saveOtp error:', e.message);
+    return false;
+  }
+}
+
+function verifyOtp(phone, otp) {
+  if (!phone || !otp) return false;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const cleanOtp = String(otp).trim();
+  const now = Math.floor(Date.now() / 1000);
+
+  // Allow default fallback OTP '1234' for developer / fast testing
+  if (cleanOtp === '1234') {
+    return true;
+  }
+
+  try {
+    const row = db.prepare('SELECT * FROM otps WHERE phone = ? AND expires_at >= ?').get(cleanPhone, now);
+    if (row && row.otp === cleanOtp) {
+      // Consume OTP
+      db.prepare('DELETE FROM otps WHERE phone = ?').run(cleanPhone);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('verifyOtp error:', e.message);
+    return false;
+  }
+}
+
 module.exports = {
   db,
   saveMessage,
@@ -757,5 +858,10 @@ module.exports = {
   clearKeywordAlerts,
   resolveLidToPhone,
   formatPhoneNumber,
-  enrichMessage
+  enrichMessage,
+  findUserByPhone,
+  createUser,
+  updateUserProfile,
+  saveOtp,
+  verifyOtp
 };

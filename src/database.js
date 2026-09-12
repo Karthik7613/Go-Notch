@@ -554,17 +554,28 @@ function getStats() {
 
 function addKeyword(keyword, type = 'include') {
   if (!keyword || !keyword.trim()) return false;
-  const clean = keyword.trim().toLowerCase();
   const kwType = type === 'exclude' ? 'exclude' : 'include';
-  try {
-    const existing = db.prepare("SELECT id FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
-    if (existing) return true;
-    db.prepare('INSERT OR IGNORE INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)').run(clean, kwType, Math.floor(Date.now() / 1000));
-    return true;
-  } catch (e) {
-    console.error('addKeyword error:', e.message);
-    return false;
+  
+  // Support comma, semicolon, newline or slash separated tokens
+  const parts = keyword.split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (parts.length === 0) return false;
+
+  let anyAdded = false;
+  const insertStmt = db.prepare('INSERT OR IGNORE INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)');
+  const now = Math.floor(Date.now() / 1000);
+
+  for (const clean of parts) {
+    try {
+      const existing = db.prepare("SELECT id FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
+      if (!existing) {
+        insertStmt.run(clean, kwType, now);
+        anyAdded = true;
+      }
+    } catch (e) {
+      console.error('addKeyword token error:', clean, e.message);
+    }
   }
+  return true;
 }
 
 function removeKeyword(keyword, type = 'include') {
@@ -663,14 +674,24 @@ function getKeywordAlerts(limit = 100) {
 
   include.forEach((kw, idx) => {
     const paramKey = `inc_${idx}`;
-    includeClauses.push(`COALESCE(content, '') LIKE @${paramKey} OR COALESCE(ai_transcript, '') LIKE @${paramKey} OR COALESCE(ai_translation, '') LIKE @${paramKey}`);
-    params[paramKey] = `%${kw}%`;
+    includeClauses.push(`(
+      LOWER(COALESCE(content, '')) LIKE @${paramKey} OR 
+      LOWER(COALESCE(ai_transcript, '')) LIKE @${paramKey} OR 
+      LOWER(COALESCE(ai_translation, '')) LIKE @${paramKey} OR
+      LOWER(COALESCE(chat_name, '')) LIKE @${paramKey} OR
+      LOWER(COALESCE(sender_name, '')) LIKE @${paramKey}
+    )`);
+    params[paramKey] = `%${kw.toLowerCase().trim()}%`;
   });
 
   exclude.forEach((kw, idx) => {
     const paramKey = `exc_${idx}`;
-    excludeClauses.push(`COALESCE(content, '') LIKE @${paramKey} OR COALESCE(ai_transcript, '') LIKE @${paramKey} OR COALESCE(ai_translation, '') LIKE @${paramKey}`);
-    params[paramKey] = `%${kw}%`;
+    excludeClauses.push(`(
+      LOWER(COALESCE(content, '')) LIKE @${paramKey} OR 
+      LOWER(COALESCE(ai_transcript, '')) LIKE @${paramKey} OR 
+      LOWER(COALESCE(ai_translation, '')) LIKE @${paramKey}
+    )`);
+    params[paramKey] = `%${kw.toLowerCase().trim()}%`;
   });
 
   const includeSql = `(${includeClauses.join(' OR ')})`;
@@ -678,7 +699,7 @@ function getKeywordAlerts(limit = 100) {
 
   let minTimestamp = 0;
   if (scope === 'upcoming') {
-    minTimestamp = Math.max(clearedTime, since || 0);
+    minTimestamp = Math.max(clearedTime, (since ? since - 120 : 0));
   } else {
     minTimestamp = clearedTime;
   }
@@ -698,12 +719,12 @@ function getKeywordAlerts(limit = 100) {
   try {
     const rows = db.prepare(sql).all(params);
     return rows.filter(msg => {
-      const fullText = `${msg.content || ''} ${msg.ai_transcript || ''} ${msg.ai_translation || ''}`.toLowerCase();
-      const hasExclude = exclude.some(kw => fullText.includes(kw));
+      const fullText = `${msg.content || ''} ${msg.ai_transcript || ''} ${msg.ai_translation || ''} ${msg.chat_name || ''} ${msg.sender_name || ''}`.toLowerCase();
+      const hasExclude = exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
       return !hasExclude;
     }).map(msg => {
-      const fullText = `${msg.content || ''} ${msg.ai_transcript || ''} ${msg.ai_translation || ''}`.toLowerCase();
-      const matchedKeywords = include.filter(kw => fullText.includes(kw));
+      const fullText = `${msg.content || ''} ${msg.ai_transcript || ''} ${msg.ai_translation || ''} ${msg.chat_name || ''} ${msg.sender_name || ''}`.toLowerCase();
+      const matchedKeywords = include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
       return {
         ...enrichMessage(msg),
         matched_keywords: matchedKeywords

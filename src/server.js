@@ -43,7 +43,11 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 app.use(cors());
@@ -176,6 +180,8 @@ app.post('/api/keywords/scope', (req, res) => {
       return res.status(400).json({ error: 'scope must be "upcoming" or "all"' });
     }
     const result = setMonitoringScope(scope);
+    io.emit('keywords_updated', getKeywords());
+    io.emit('keyword_alert');
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -189,7 +195,10 @@ app.post('/api/keywords', (req, res) => {
       return res.status(400).json({ error: 'keyword parameter is required' });
     }
     const added = addKeyword(keyword, type || 'include');
-    res.json({ success: added, keywords: getKeywords() });
+    const allKw = getKeywords();
+    io.emit('keywords_updated', allKw);
+    io.emit('keyword_alert');
+    res.json({ success: added, keywords: allKw });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -199,7 +208,10 @@ app.delete('/api/keywords/:keyword', (req, res) => {
   try {
     const kwType = req.query.type || 'include';
     const removed = removeKeyword(req.params.keyword, kwType);
-    res.json({ success: removed, keywords: getKeywords() });
+    const allKw = getKeywords();
+    io.emit('keywords_updated', allKw);
+    io.emit('keyword_alert');
+    res.json({ success: removed, keywords: allKw });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -217,6 +229,7 @@ app.get('/api/keywords/alerts', (req, res) => {
 app.delete('/api/keywords/alerts', (req, res) => {
   try {
     const success = clearKeywordAlerts();
+    io.emit('keyword_alert');
     res.json({ success, alerts: [] });
   } catch (err) {
     res.status(500).json({ error: err.message });

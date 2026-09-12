@@ -31,17 +31,17 @@ function checkAndEmitKeywordAlert(msgData) {
   if (!include || include.length === 0) return;
 
   const { scope, since } = getMonitoringScope();
-  if (scope === 'upcoming' && since > 0 && Number(msgData.timestamp) < since) {
+  if (scope === 'upcoming' && since > 0 && Number(msgData.timestamp) < (since - 120)) {
     return;
   }
 
-  const fullText = `${msgData.content || ''} ${msgData.ai_transcript || ''} ${msgData.ai_translation || ''}`.toLowerCase();
+  const fullText = `${msgData.content || ''} ${msgData.ai_transcript || ''} ${msgData.ai_translation || ''} ${msgData.chat_name || ''} ${msgData.sender_name || ''}`.toLowerCase();
   
   // Skip if message contains any excluded keywords (e.g. "vacant", "vacant chennai")
-  const hasExclude = exclude.some(kw => fullText.includes(kw));
+  const hasExclude = exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
   if (hasExclude) return;
 
-  const matched = include.filter(kw => fullText.includes(kw));
+  const matched = include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
   if (matched.length > 0) {
     ioInstance.emit('keyword_alert', {
       ...msgData,
@@ -294,9 +294,11 @@ async function connectToWhatsApp() {
             }
           }
 
-          const isNew = saveMessage(messageData);
-          if (isNew && ioInstance) {
+          saveMessage(messageData);
+
+          if (ioInstance) {
             ioInstance.emit('new_message', messageData);
+            ioInstance.emit('chats_updated');
             checkAndEmitKeywordAlert(messageData);
           }
 
@@ -372,6 +374,7 @@ async function sendWhatsAppMessage(jid, text) {
     saveMessage(parsed);
     if (ioInstance) {
       ioInstance.emit('new_message', parsed);
+      ioInstance.emit('chats_updated');
     }
   }
   return parsed;
@@ -390,12 +393,23 @@ function unwrapMessageContent(m) {
   }
 
   if (m.conversation) return { content: m.conversation, type: 'text' };
-  if (m.extendedTextMessage?.text) return { content: m.extendedTextMessage.text, type: 'text' };
+
+  if (m.extendedTextMessage) {
+    let mainText = m.extendedTextMessage.text || '';
+    const quoted = m.extendedTextMessage.contextInfo?.quotedMessage;
+    if (quoted) {
+      const quotedContent = unwrapMessageContent(quoted).content;
+      if (quotedContent && quotedContent !== '[Message]') {
+        mainText = `${mainText}\n[Quoted: ${quotedContent}]`.trim();
+      }
+    }
+    return { content: mainText, type: 'text' };
+  }
 
   if (m.imageMessage) return { content: m.imageMessage.caption || '[Photo]', type: 'image' };
   if (m.videoMessage) return { content: m.videoMessage.caption || '[Video]', type: 'video' };
   if (m.audioMessage) return { content: m.audioMessage.ptt ? '[Voice Note]' : '[Audio Record]', type: 'audio' };
-  if (m.documentMessage) return { content: m.documentMessage.fileName || m.documentMessage.title || '[Document]', type: 'document' };
+  if (m.documentMessage) return { content: m.documentMessage.caption || m.documentMessage.fileName || m.documentMessage.title || '[Document]', type: 'document' };
   if (m.stickerMessage) return { content: '[Sticker]', type: 'sticker' };
 
   if (m.reactionMessage) {
@@ -406,6 +420,18 @@ function unwrapMessageContent(m) {
     const name = poll.name || 'Poll';
     const opts = poll.options ? poll.options.map(o => o.optionName).join(', ') : '';
     return { content: `📊 Poll: "${name}" ${opts ? `(${opts})` : ''}`, type: 'poll' };
+  }
+  if (m.templateButtonReplyMessage) {
+    return { content: m.templateButtonReplyMessage.selectedDisplayText || '[Button Reply]', type: 'text' };
+  }
+  if (m.buttonsResponseMessage) {
+    return { content: m.buttonsResponseMessage.selectedDisplayText || '[Button Reply]', type: 'text' };
+  }
+  if (m.listResponseMessage) {
+    return { content: m.listResponseMessage.title || m.listResponseMessage.singleSelectReply?.selectedRowId || '[List Selection]', type: 'text' };
+  }
+  if (m.interactiveResponseMessage?.body?.text) {
+    return { content: m.interactiveResponseMessage.body.text, type: 'text' };
   }
   if (m.locationMessage || m.liveLocationMessage) {
     const loc = m.locationMessage || m.liveLocationMessage;

@@ -176,7 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (typeof io !== 'undefined') {
-      socket = io(serverUrl, { autoConnect: true, reconnection: true, timeout: 8000 });
+      socket = io(serverUrl, {
+        transports: ['polling', 'websocket'],
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000
+      });
 
       socket.on('connect', () => {
         if (qrServerStatus) {
@@ -185,12 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         loadStats();
         loadThreads();
+        loadKeywords();
+        loadKeywordAlerts();
       });
 
       socket.on('connect_error', () => {
         if (qrServerStatus) {
-          qrServerStatus.textContent = 'Server Unreachable';
-          qrServerStatus.className = 'font-bold text-rose-500';
+          qrServerStatus.textContent = 'Server Reconnecting...';
+          qrServerStatus.className = 'font-bold text-amber-500';
         }
       });
 
@@ -212,10 +222,26 @@ document.addEventListener('DOMContentLoaded', () => {
         loadKeywordAlerts();
       });
 
+      socket.on('keywords_updated', (kws) => {
+        if (kws) {
+          activeKeywords = kws;
+          renderKeywordTags();
+        }
+        loadKeywordAlerts();
+      });
+
       socket.on('contacts_updated', () => loadThreads());
       socket.on('chats_updated', () => loadThreads());
     }
   }
+
+  // Resilient background sync interval (keeps threads and keyword alerts fresh with 0-lag)
+  setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      loadStats();
+      loadKeywordAlerts();
+    }
+  }, 3500);
 
   if (qrConnectServerBtn && qrServerUrlInput) {
     qrConnectServerBtn.addEventListener('click', () => {

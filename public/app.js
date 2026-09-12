@@ -319,6 +319,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const pageExcludeKeywordInput = document.getElementById('pageExcludeKeywordInput');
   const pageActiveExcludeKeywordTags = document.getElementById('pageActiveExcludeKeywordTags');
 
+  // DOM Elements - Keywords Modal Specific
+  const modalAddIncludeKeywordForm = document.getElementById('modalAddIncludeKeywordForm');
+  const modalIncludeKeywordInput = document.getElementById('modalIncludeKeywordInput');
+  const modalActiveIncludeKeywordTags = document.getElementById('modalActiveIncludeKeywordTags');
+  const modalAddExcludeKeywordForm = document.getElementById('modalAddExcludeKeywordForm');
+  const modalExcludeKeywordInput = document.getElementById('modalExcludeKeywordInput');
+  const modalActiveExcludeKeywordTags = document.getElementById('modalActiveExcludeKeywordTags');
+
 
   // DOM Elements - Profile Page Specific
   const pageProfileName = document.getElementById('pageProfileName');
@@ -558,14 +566,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (activeIncludeKeywordTags) activeIncludeKeywordTags.innerHTML = incHtml;
     if (pageActiveIncludeKeywordTags) pageActiveIncludeKeywordTags.innerHTML = incHtml;
+    if (modalActiveIncludeKeywordTags) modalActiveIncludeKeywordTags.innerHTML = incHtml;
 
     // 2. Exclude tags
     const excHtml = excList.length === 0
-      ? `<span class="text-xs text-slate-400 italic">No exclude keywords added yet.</span>`
+      ? `<span class="text-xs text-slate-400 italic">No exclude keywords set.</span>`
       : excList.map(kw => createTagHtml(kw, 'exclude', 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30', '🚫')).join('');
 
     if (activeExcludeKeywordTags) activeExcludeKeywordTags.innerHTML = excHtml;
     if (pageActiveExcludeKeywordTags) pageActiveExcludeKeywordTags.innerHTML = excHtml;
+    if (modalActiveExcludeKeywordTags) modalActiveExcludeKeywordTags.innerHTML = excHtml;
 
     document.querySelectorAll('.remove-kw-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -620,6 +630,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Modal Form Submit Handlers
+  if (modalAddIncludeKeywordForm) {
+    modalAddIncludeKeywordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = modalIncludeKeywordInput ? modalIncludeKeywordInput.value.trim() : '';
+      if (!val) return;
+      await postKeyword(val, 'include');
+      if (modalIncludeKeywordInput) modalIncludeKeywordInput.value = '';
+    });
+  }
+
+  if (modalAddExcludeKeywordForm) {
+    modalAddExcludeKeywordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = modalExcludeKeywordInput ? modalExcludeKeywordInput.value.trim() : '';
+      if (!val) return;
+      await postKeyword(val, 'exclude');
+      if (modalExcludeKeywordInput) modalExcludeKeywordInput.value = '';
+    });
+  }
+
   async function postKeyword(keyword, type) {
     try {
       const res = await apiFetch('/api/keywords', {
@@ -628,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ keyword, type })
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.keywords) {
         activeKeywords = data.keywords;
         renderKeywordTags();
         loadKeywordAlerts();
@@ -642,7 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await apiFetch(`/api/keywords/${encodeURIComponent(kw)}?type=${encodeURIComponent(type)}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.success) {
+      if (data.keywords) {
         activeKeywords = data.keywords;
         renderKeywordTags();
         loadKeywordAlerts();

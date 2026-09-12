@@ -551,9 +551,12 @@ function addKeyword(keyword, type = 'include') {
   const clean = keyword.trim().toLowerCase();
   const kwType = type === 'exclude' ? 'exclude' : 'include';
   try {
+    const existing = db.prepare("SELECT id FROM keywords WHERE keyword = ? AND COALESCE(type, 'include') = ?").get(clean, kwType);
+    if (existing) return true;
     const info = db.prepare('INSERT INTO keywords (keyword, type, created_at) VALUES (?, ?, ?)').run(clean, kwType, Math.floor(Date.now() / 1000));
     return info.changes > 0;
   } catch (e) {
+    console.error('addKeyword error:', e.message);
     return false;
   }
 }
@@ -564,8 +567,9 @@ function removeKeyword(keyword, type = 'include') {
   const kwType = type === 'exclude' ? 'exclude' : 'include';
   try {
     const info = db.prepare("DELETE FROM keywords WHERE keyword = ? AND COALESCE(type, 'include') = ?").run(clean, kwType);
-    return info.changes > 0;
+    return true;
   } catch (e) {
+    console.error('removeKeyword error:', e.message);
     return false;
   }
 }

@@ -10,6 +10,10 @@ const { transcribeAndTranslateAudio } = require('./ai');
 const authFolder = process.env.AUTH_FOLDER || path.join(__dirname, '..', 'auth_info_baileys');
 const mediaDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'media') : path.join(__dirname, '..', 'data', 'media');
 
+if (!fs.existsSync(authFolder)) {
+  fs.mkdirSync(authFolder, { recursive: true });
+}
+
 if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }

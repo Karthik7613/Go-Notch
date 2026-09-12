@@ -1,21 +1,23 @@
 FROM node:20-bookworm-slim
 
-# Install system build dependencies and ffmpeg
+# Install system build dependencies, ONNX runtime dependencies (libgomp1) and ffmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
+    gcc \
+    libgomp1 \
     ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package definition files
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies (rebuilding native C++ bindings for linux)
-RUN npm install --production
+# Install dependencies and explicitly rebuild native modules for Linux
+RUN npm install --omit=dev && npm rebuild better-sqlite3
 
 # Copy application source code
 COPY . .

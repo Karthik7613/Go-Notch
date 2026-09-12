@@ -14,6 +14,9 @@ const authFolder = process.env.AUTH_FOLDER || path.join(__dirname, '..', 'auth_i
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
+if (!fs.existsSync(authFolder)) {
+  fs.mkdirSync(authFolder, { recursive: true });
+}
 
 const dbPath = path.join(dataDir, 'messages.db');
 const db = new Database(dbPath);

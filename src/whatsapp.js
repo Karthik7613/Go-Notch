@@ -262,7 +262,15 @@ async function connectToWhatsApp() {
           connectionStatus = 'disconnected';
           currentQr = null;
           userInfo = null;
+          if (fs.existsSync(authFolder)) {
+            try { fs.rmSync(authFolder, { recursive: true, force: true }); } catch (e) {}
+          }
           emitStatus();
+
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            connectToWhatsApp();
+          }, 1500);
         } else {
           // Keep cached user info so UI remains stable during quick reconnect
           connectionStatus = 'connecting';
@@ -468,6 +476,7 @@ function parseWhatsAppMessage(msg) {
 
   const key = msg.key;
   if (!key || !key.remoteJid || key.remoteJid === 'status@broadcast') return null;
+  const chatJid = key.remoteJid;
 
   const { content, type } = unwrapMessageContent(msg.message);
   // Completely ignore internal protocol synchronization packets

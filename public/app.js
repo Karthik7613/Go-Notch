@@ -2443,7 +2443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 1. Triple-Tone Loud & Crisp Attention Chime (Ascending Harmonic Triad)
+  // 1. High-Clarity Executive Attention Chime (Multi-Layered Harmonic Ping & Ring)
   function playAlertChime() {
     if (!soundAlertsEnabled) return;
     try {
@@ -2452,44 +2452,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const now = audioCtx.currentTime;
 
-      // Note 1: 587.33 Hz (D5)
-      const osc1 = audioCtx.createOscillator();
-      const gain1 = audioCtx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(587.33, now);
-      gain1.gain.setValueAtTime(0.001, now);
-      gain1.gain.linearRampToValueAtTime(0.4, now + 0.04);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      osc1.connect(gain1);
-      gain1.connect(audioCtx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.3);
+      // Master dynamics compressor to ensure punchy, loud audio without digital distortion
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-18, now);
+      compressor.knee.setValueAtTime(6, now);
+      compressor.ratio.setValueAtTime(4, now);
+      compressor.attack.setValueAtTime(0.002, now);
+      compressor.release.setValueAtTime(0.2, now);
 
-      // Note 2: 739.99 Hz (F#5)
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.type = 'triangle';
-      osc2.frequency.setValueAtTime(739.99, now + 0.1);
-      gain2.gain.setValueAtTime(0.001, now + 0.1);
-      gain2.gain.linearRampToValueAtTime(0.45, now + 0.14);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.start(now + 0.1);
-      osc2.stop(now + 0.45);
+      const masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.9, now);
 
-      // Note 3: 880 Hz (A5 Harmonic Peak)
-      const osc3 = audioCtx.createOscillator();
-      const gain3 = audioCtx.createGain();
-      osc3.type = 'sine';
-      osc3.frequency.setValueAtTime(880, now + 0.22);
-      gain3.gain.setValueAtTime(0.001, now + 0.22);
-      gain3.gain.linearRampToValueAtTime(0.5, now + 0.26);
-      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
-      osc3.connect(gain3);
-      gain3.connect(audioCtx.destination);
-      osc3.start(now + 0.22);
-      osc3.stop(now + 0.75);
+      compressor.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
+
+      // Helper function to synthesize a crisp bell tone with harmonics
+      function playTone(freq, startTime, duration, vol, waveType = 'sine') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = waveType;
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+        osc.connect(gain);
+        gain.connect(compressor);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      }
+
+      // Pulse 1: Attention Pre-Ping (Crisp dual-tone wake chime)
+      playTone(1046.50, now, 0.18, 0.6, 'sine');       // C6
+      playTone(2093.00, now, 0.12, 0.35, 'triangle');   // C7 Shimmer
+
+      // Pulse 2: Resonant Major Triad Uplift (Main Body & Rich Ring)
+      const p2 = now + 0.14;
+      playTone(1174.66, p2, 0.85, 0.75, 'sine');       // D6 Root
+      playTone(1479.98, p2, 0.75, 0.65, 'triangle');   // F#6 Warm Third
+      playTone(1760.00, p2, 0.95, 0.8, 'sine');        // A6 Bright Fifth
+      playTone(2349.32, p2, 0.6, 0.4, 'sine');         // D7 High Sparkle
+
+      // Pulse 3: Crystal Accent Tail (Long Ringing Shimmer)
+      const p3 = now + 0.28;
+      playTone(1760.00, p3, 1.1, 0.7, 'sine');         // A6
+      playTone(2637.02, p3, 0.9, 0.35, 'triangle');    // E7
     } catch (e) {
       console.warn('Audio chime error:', e);
     }

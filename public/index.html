@@ -37,6 +37,8 @@
   <!-- Bundled Local Vendor Scripts (Offline & APK Support) -->
   <script src="vendor/lucide.min.js"></script>
   <script src="vendor/socket.io.min.js"></script>
+  <!-- Razorpay Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body class="bg-slate-100 dark:bg-wa-dark text-slate-800 dark:text-slate-100 h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200">
 
@@ -314,8 +316,190 @@
       </div>
     </div>
 
+    <!-- PAGE VIEW 0: DEDICATED DASHBOARD (Subscription, Plan Validity, Stats & Monitoring Overview) -->
+    <div id="pageViewDashboard" class="page-view flex-1 flex flex-col w-full h-full overflow-y-auto bg-slate-50 dark:bg-wa-dark">
+      
+      <!-- Top iOS Header: Dashboard Title & User Info -->
+      <div class="pt-4 pb-3 px-4 sm:px-6 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
+          <p id="dashboardUserSubtitle" class="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Welcome back to Go-Notch Trip Monitor</p>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button id="dashboardRefreshBtn" title="Refresh Dashboard" class="p-2 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <i data-lucide="rotate-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Scrollable Body -->
+      <div class="p-4 sm:p-6 space-y-5 max-w-4xl mx-auto w-full flex-1">
+
+        <!-- 1. HERO SUBSCRIPTION STATUS CARD (₹49 / Month Pro) -->
+        <div id="dashboardSubCard" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 sm:p-7 text-white shadow-xl border border-emerald-500/30">
+          
+          <!-- Background Glow Elements -->
+          <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -left-12 -bottom-12 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            
+            <div class="space-y-3">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <span id="dashboardPlanBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
+                  <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                  <span id="dashboardPlanBadgeText">PRO MEMBER ACTIVE</span>
+                </span>
+                <span id="dashboardDaysBadge" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-emerald-300 backdrop-blur-sm border border-emerald-400/20">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                  <strong id="dashboardDaysRemaining">30</strong>&nbsp;Days Left
+                </span>
+              </div>
+
+              <div>
+                <h2 id="dashboardPlanTitle" class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-baseline gap-2">
+                  <span>Monthly Pro Plan</span>
+                  <span class="text-lg font-bold text-emerald-400">₹49<span class="text-xs text-slate-300">/mo</span></span>
+                </h2>
+                <p id="dashboardPlanValidityText" class="text-xs text-slate-300 mt-1">
+                  Valid until: <strong id="dashboardExpiryDate" class="text-white font-mono font-semibold">Loading...</strong>
+                </p>
+              </div>
+
+              <!-- Days Remaining Progress Bar -->
+              <div class="w-full max-w-md pt-1 space-y-1.5">
+                <div class="flex justify-between text-[11px] font-semibold text-slate-300">
+                  <span>Subscription Validity</span>
+                  <span id="dashboardProgressPercent">100% Active</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-600/40">
+                  <div id="dashboardProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-300 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subscription Action Buttons -->
+            <div class="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
+              <button id="dashboardPayNowBtn" class="px-5 py-3.5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
+                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                <span id="dashboardPayBtnText">Renew / Extend Plan (₹49)</span>
+              </button>
+              <button id="dashboardTestBypassBtn" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 backdrop-blur-sm border border-white/10 cursor-pointer">
+                <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>🧪 Test Activate 30-Days</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 2. QUICK APP STATS HUB -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          
+          <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">WhatsApp</span>
+              <i data-lucide="message-circle" class="w-4 h-4 text-emerald-500"></i>
+            </div>
+            <p id="dashboardStatWA" class="text-lg font-black text-slate-900 dark:text-white">Checking...</p>
+            <p id="dashboardStatWADesc" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live Monitoring
+            </p>
+          </div>
+
+          <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Active Rules</span>
+              <i data-lucide="tags" class="w-4 h-4 text-indigo-500"></i>
+            </div>
+            <p id="dashboardStatKeywords" class="text-lg font-black text-slate-900 dark:text-white">0</p>
+            <p class="text-[10px] text-slate-400">Include & Exclude</p>
+          </div>
+
+          <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Matched Trips</span>
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+            </div>
+            <p id="dashboardStatMatches" class="text-lg font-black text-slate-900 dark:text-white">0</p>
+            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Real-time alerts</p>
+          </div>
+
+          <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Plan Rate</span>
+              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+            </div>
+            <p class="text-lg font-black text-slate-900 dark:text-white">₹49<span class="text-xs font-normal text-slate-400">/mo</span></p>
+            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Pro Unlocked</p>
+          </div>
+
+        </div>
+
+        <!-- 3. FEATURE NAVIGATION SHORTCUTS -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+          <button id="dashboardGoWhatsAppBtn" class="p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs transition text-left flex items-center gap-3.5 group cursor-pointer">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
+              <i data-lucide="message-circle" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition">Live Chats</p>
+              <p class="text-[11px] text-slate-400 truncate">Read and search WhatsApp</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
+          </button>
+
+          <button id="dashboardGoMatchingBtn" class="p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs transition text-left flex items-center gap-3.5 group cursor-pointer">
+            <div class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
+              <i data-lucide="sparkles" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition">Matched Trips</p>
+              <p class="text-[11px] text-slate-400 truncate">View high-priority leads</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
+          </button>
+
+          <button id="dashboardGoKeywordsBtn" class="p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs transition text-left flex items-center gap-3.5 group cursor-pointer">
+            <div class="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
+              <i data-lucide="tags" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition">Keyword Rules</p>
+              <p class="text-[11px] text-slate-400 truncate">Configure pickup / drops</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
+          </button>
+
+        </div>
+
+        <!-- 4. RECENT SUBSCRIPTION PAYMENTS / INVOICES -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="receipt" class="w-5 h-5 text-emerald-500"></i>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Payment Receipts & Invoices</h3>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400">Razorpay Gateway (INR)</span>
+          </div>
+
+          <div id="dashboardPaymentsList" class="space-y-2">
+            <!-- Dynamic receipts injected via JavaScript -->
+            <div class="text-center py-6 text-slate-400 text-xs">
+              <i data-lucide="clock" class="w-6 h-6 mx-auto mb-1 opacity-50"></i>
+              No payments found yet. Subscribe to activate full access.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- PAGE VIEW 1: WHATSAPP FULL CHAT PAGE -->
-    <div id="pageViewWhatsApp" class="page-view flex-1 flex w-full h-full overflow-hidden relative">
+    <div id="pageViewWhatsApp" class="page-view hidden flex-1 flex w-full h-full overflow-hidden relative">
 
       <!-- LEFT SIDEBAR: Account Header, Search, Filter Pills, & Chat List -->
       <aside id="chatSidebar" class="w-full sm:w-80 md:w-96 bg-white dark:bg-wa-sidebarDark border-r border-slate-100 dark:border-slate-800 flex flex-col flex-shrink-0 h-full">
@@ -736,25 +920,30 @@
 
   </div>
 
-  <!-- BOTTOM NAVIGATION BAR (1. WhatsApp, 2. Matching, 3. Keywords, 4. Profile) -->
-  <nav id="bottomNav" class="hidden h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-2">
-    <button data-tab="whatsapp" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold transition text-emerald-600 dark:text-emerald-400">
-      <i data-lucide="message-circle" class="w-6 h-6 mb-0.5"></i>
-      <span class="text-[11px] font-semibold">WhatsApp</span>
+  <!-- BOTTOM NAVIGATION BAR (1. Dashboard, 2. WhatsApp, 3. Matching, 4. Keywords, 5. Profile) -->
+  <nav id="bottomNav" class="hidden h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-1.5 sm:px-2">
+    <button data-tab="dashboard" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold transition text-emerald-600 dark:text-emerald-400 cursor-pointer">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[11px] font-semibold">Dashboard</span>
     </button>
 
-    <button data-tab="matching" class="bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
-      <i data-lucide="sparkles" class="w-6 h-6 mb-0.5"></i>
+    <button data-tab="whatsapp" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+      <i data-lucide="message-circle" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[11px]">WhatsApp</span>
+    </button>
+
+    <button data-tab="matching" class="bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+      <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Matching</span>
     </button>
 
-    <button data-tab="keywords" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
-      <i data-lucide="tags" class="w-6 h-6 mb-0.5"></i>
+    <button data-tab="keywords" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+      <i data-lucide="tags" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Keywords</span>
     </button>
 
-    <button data-tab="profile" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600">
-      <i data-lucide="circle-user" class="w-6 h-6 mb-0.5"></i>
+    <button data-tab="profile" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+      <i data-lucide="circle-user" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Profile</span>
     </button>
   </nav>
@@ -1001,7 +1190,90 @@
     </div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <!-- PAYWALL & SUBSCRIPTION RESTRICTION MODAL -->
+  <div id="paywallModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden relative text-left transition-all">
+      <button id="closePaywallModalBtn" class="absolute top-4 right-4 z-20 p-2 text-slate-300 hover:text-white rounded-full hover:bg-white/10 transition" title="Close">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Top Glow Banner -->
+      <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white text-center space-y-2 border-b border-emerald-500/20">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 rounded-full text-xs font-black uppercase tracking-wider mb-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>PRO MEMBERSHIP REQUIRED</span>
+        </div>
+        <h2 class="text-2xl font-black tracking-tight text-white">Activate Plan to Connect WhatsApp</h2>
+        <p class="text-xs text-slate-300 max-w-sm mx-auto">
+          Please subscribe to the <strong class="text-emerald-400 font-bold">₹49/month plan</strong> to link your WhatsApp account, scan QR code, and receive real-time match alerts.
+        </p>
+      </div>
+
+      <div class="p-6 space-y-5">
+        
+        <!-- Pricing Pill -->
+        <div class="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl">
+          <div class="space-y-0.5">
+            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Selected Plan</span>
+            <p class="text-base font-bold text-slate-900 dark:text-white">Monthly Pro Pass</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Full 30-day unmetered access</p>
+          </div>
+          <div class="text-right">
+            <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400">₹49</p>
+            <span class="text-[10px] font-semibold text-slate-400">/ 30 Days</span>
+          </div>
+        </div>
+
+        <!-- Pro Features List -->
+        <div class="space-y-2.5">
+          <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Everything Included in Pro:</p>
+          
+          <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <span><strong>Real-time WhatsApp Message Sync</strong> across 500+ contacts & groups</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <span><strong>10-Second Continuous Harmonic Sound Chimes</strong> for trip matches</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <span><strong>Always-On-Top Floating Card (PiP)</strong> over any desktop app</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <span><strong>Unlimited Custom Keywords & Exclude Filters</strong></span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <span><strong>AI Voice Note Transcription & Translation</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-2 pt-2">
+          <button id="paywallPayWithRazorpayBtn" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Pay ₹49 & Activate Instant Access</span>
+          </button>
+
+          <button id="paywallTestBypassBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>🧪 Sandbox Test Payment (1-Click Instant)</span>
+          </button>
+        </div>
+
+        <p class="text-[10px] text-center text-slate-400">
+          Secured by Razorpay • UPI, Cards, Netbanking & Wallets Supported
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=10"></script>
 
 </body>
 </html>

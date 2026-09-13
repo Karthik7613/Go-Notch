@@ -13,6 +13,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { 
   getChatThreads,
   getThreadMessages,
@@ -30,7 +31,11 @@ const {
   createUser,
   updateUserProfile,
   saveOtp,
-  verifyOtp
+  verifyOtp,
+  getUserSubscription,
+  createOrUpdateSubscription,
+  recordPayment,
+  getPaymentHistory
 } = require('./database');
 const { 
   setSocketIO, 
@@ -41,6 +46,9 @@ const {
   getStatus 
 } = require('./whatsapp');
 const { transcribeAndTranslateAudio } = require('./ai');
+
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_GoNotchTrip49';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'secret_test_key_GoNotch49';
 
 const app = express();
 const server = http.createServer(app);
@@ -191,6 +199,163 @@ app.post('/api/auth/update-profile', (req, res) => {
     }
     const updated = updateUserProfile(phone, name, gender);
     res.json({ success: true, user: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Subscription & Razorpay Payment API Routes (₹49/month Plan)
+app.get('/api/subscription/status', (req, res) => {
+  try {
+    const phone = req.query.phone || req.headers['x-user-phone'];
+    if (!phone) {
+      return res.status(400).json({ error: 'User phone is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const subscription = getUserSubscription(cleanPhone);
+    res.json({
+      success: true,
+      phone: cleanPhone,
+      subscription,
+      key_id: RAZORPAY_KEY_ID
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/subscription/create-order', async (req, res) => {
+  try {
+    const { phone, planName = 'Monthly Pro', amount = 49 } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'User phone is required to create subscription order' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const amountInPaise = Math.round(Number(amount) * 100) || 4900;
+    const orderId = `order_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Record initial order state
+    recordPayment({
+      userPhone: cleanPhone,
+      orderId,
+      amount: amountInPaise,
+      currency: 'INR',
+      status: 'created',
+      method: 'razorpay'
+    });
+
+    res.json({
+      success: true,
+      order: {
+        id: orderId,
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `rcpt_${cleanPhone}_${Date.now()}`,
+        plan_name: planName
+      },
+      key_id: RAZORPAY_KEY_ID
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/subscription/verify', (req, res) => {
+  try {
+    const { phone, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    if (!phone || !razorpay_order_id || !razorpay_payment_id) {
+      return res.status(400).json({ error: 'Missing payment verification parameters' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+
+    // Signature verification with Razorpay Secret
+    let isValidSignature = true;
+    if (razorpay_signature && RAZORPAY_KEY_SECRET && !RAZORPAY_KEY_SECRET.startsWith('secret_test_key')) {
+      const generatedSignature = crypto
+        .createHmac('sha256', RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+      isValidSignature = (generatedSignature === razorpay_signature);
+    }
+
+    if (!isValidSignature) {
+      return res.status(400).json({ error: 'Invalid payment signature. Verification failed.' });
+    }
+
+    // Record captured payment
+    recordPayment({
+      userPhone: cleanPhone,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature || 'verified_test',
+      amount: 4900,
+      status: 'captured',
+      method: 'razorpay'
+    });
+
+    // Activate 30-Day Subscription
+    const subscription = createOrUpdateSubscription(cleanPhone, {
+      planName: 'Monthly Pro',
+      planPrice: 49,
+      days: 30,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id
+    });
+
+    res.json({
+      success: true,
+      message: 'Subscription successfully activated for 30 days!',
+      subscription
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/subscription/activate-test', (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const dummyPaymentId = `pay_test_${Date.now()}`;
+    const dummyOrderId = `ord_test_${Date.now()}`;
+
+    recordPayment({
+      userPhone: cleanPhone,
+      orderId: dummyOrderId,
+      paymentId: dummyPaymentId,
+      signature: 'test_instant_bypass',
+      amount: 4900,
+      status: 'captured',
+      method: 'razorpay_test'
+    });
+
+    const subscription = createOrUpdateSubscription(cleanPhone, {
+      planName: 'Monthly Pro (Test Mode)',
+      planPrice: 49,
+      days: 30,
+      paymentId: dummyPaymentId,
+      orderId: dummyOrderId
+    });
+
+    res.json({
+      success: true,
+      message: 'Test subscription activated for 30 days!',
+      subscription
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/subscription/payments', (req, res) => {
+  try {
+    const phone = req.query.phone || req.headers['x-user-phone'];
+    if (!phone) return res.status(400).json({ error: 'Phone required' });
+    const payments = getPaymentHistory(phone);
+    res.json({ success: true, payments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

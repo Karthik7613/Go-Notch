@@ -85,6 +85,34 @@ function initDb() {
       expires_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_phone TEXT NOT NULL,
+      plan_name TEXT DEFAULT 'Monthly Pro',
+      plan_price INTEGER DEFAULT 49,
+      status TEXT DEFAULT 'active',
+      started_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      payment_id TEXT,
+      order_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_phone TEXT NOT NULL,
+      order_id TEXT UNIQUE NOT NULL,
+      payment_id TEXT,
+      signature TEXT,
+      amount INTEGER NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      status TEXT DEFAULT 'created',
+      method TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   // Migration for existing tables
@@ -937,6 +965,116 @@ function verifyOtp(phone, otp) {
   }
 }
 
+function getUserSubscription(phone) {
+  if (!phone) return { is_subscribed: false, status: 'inactive' };
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    const row = db.prepare(`
+      SELECT * FROM subscriptions 
+      WHERE user_phone = ? 
+      ORDER BY expires_at DESC, id DESC 
+      LIMIT 1
+    `).get(cleanPhone);
+
+    if (!row) {
+      return {
+        is_subscribed: false,
+        status: 'inactive',
+        plan_name: 'Free Trial / None',
+        plan_price: 0,
+        days_left: 0,
+        expires_at: 0
+      };
+    }
+
+    const isActive = row.status === 'active' && row.expires_at > now;
+    const secondsLeft = Math.max(0, row.expires_at - now);
+    const daysLeft = Math.ceil(secondsLeft / 86400);
+
+    return {
+      is_subscribed: isActive,
+      id: row.id,
+      user_phone: row.user_phone,
+      plan_name: row.plan_name || 'Monthly Pro',
+      plan_price: row.plan_price || 49,
+      status: isActive ? 'active' : 'expired',
+      started_at: row.started_at,
+      expires_at: row.expires_at,
+      days_left: daysLeft,
+      payment_id: row.payment_id || '',
+      order_id: row.order_id || ''
+    };
+  } catch (e) {
+    console.error('getUserSubscription error:', e.message);
+    return { is_subscribed: false, status: 'error', error: e.message };
+  }
+}
+
+function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice = 49, days = 30, paymentId = '', orderId = '' } = {}) {
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  if (!cleanPhone) throw new Error('Phone number is required for subscription');
+
+  const now = Math.floor(Date.now() / 1000);
+  const current = getUserSubscription(cleanPhone);
+
+  let startedAt = now;
+  let expiresAt = now + (days * 86400);
+
+  // If already active, extend from current expiry date
+  if (current && current.is_subscribed && current.expires_at > now) {
+    startedAt = current.started_at;
+    expiresAt = current.expires_at + (days * 86400);
+  }
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO subscriptions (user_phone, plan_name, plan_price, status, started_at, expires_at, payment_id, order_id, created_at, updated_at)
+      VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(cleanPhone, planName, planPrice, startedAt, expiresAt, paymentId, orderId, now, now);
+
+    return getUserSubscription(cleanPhone);
+  } catch (e) {
+    console.error('createOrUpdateSubscription error:', e.message);
+    throw e;
+  }
+}
+
+function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amount = 4900, currency = 'INR', status = 'created', method = 'razorpay' }) {
+  const cleanPhone = String(userPhone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO payments (user_phone, order_id, payment_id, signature, amount, currency, status, method, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_id) DO UPDATE SET
+        payment_id = COALESCE(excluded.payment_id, payments.payment_id),
+        signature = COALESCE(excluded.signature, payments.signature),
+        status = excluded.status,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(cleanPhone, orderId, paymentId, signature, amount, currency, status, method, now, now);
+    return true;
+  } catch (e) {
+    console.error('recordPayment error:', e.message);
+    return false;
+  }
+}
+
+function getPaymentHistory(phone) {
+  if (!phone) return [];
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  try {
+    return db.prepare('SELECT * FROM payments WHERE user_phone = ? ORDER BY created_at DESC LIMIT 50').all(cleanPhone);
+  } catch (e) {
+    console.error('getPaymentHistory error:', e.message);
+    return [];
+  }
+}
+
 module.exports = {
   db,
   saveMessage,
@@ -964,5 +1102,9 @@ module.exports = {
   createUser,
   updateUserProfile,
   saveOtp,
-  verifyOtp
+  verifyOtp,
+  getUserSubscription,
+  createOrUpdateSubscription,
+  recordPayment,
+  getPaymentHistory
 };

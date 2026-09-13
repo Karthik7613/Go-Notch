@@ -156,8 +156,29 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterChannelsBtn) filterChannelsBtn.addEventListener('click', () => setFilter('channels'));
 
   function showQrModal() {
-    if (!currentUser) return;
-    if (qrModal) qrModal.classList.remove('hidden');
+    if (!currentUser) {
+      showAuthStep('phone');
+      return;
+    }
+    if (!userSubscription || !userSubscription.is_subscribed) {
+      if (paywallModal) paywallModal.classList.remove('hidden');
+      safeCreateIcons();
+      return;
+    }
+    if (qrModal) {
+      qrModal.classList.remove('hidden');
+      if (isConnected) {
+        if (alreadyConnectedBanner) alreadyConnectedBanner.classList.remove('hidden');
+        if (qrContainer) qrContainer.classList.add('hidden');
+      } else {
+        if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
+        if (qrContainer) qrContainer.classList.remove('hidden');
+        if (!qrImage || !qrImage.src) {
+          triggerLogoutAndReset();
+        }
+      }
+      safeCreateIcons();
+    }
   }
 
   if (headerPlusBtn) {
@@ -313,7 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeKeywords = { include: [], exclude: [] };
 
-  // DOM Elements - 4 Main Page Views
+  // DOM Elements - 5 Main Page Views (Dashboard, WhatsApp, Matching, Keywords, Profile)
+  const pageViewDashboard = document.getElementById('pageViewDashboard');
   const pageViewWhatsApp = document.getElementById('pageViewWhatsApp');
   const pageViewMatching = document.getElementById('pageViewMatching');
   const pageViewKeywords = document.getElementById('pageViewKeywords');
@@ -591,11 +613,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quick Direct Dashboard Entry Button
   const authQuickBypassBtn = document.getElementById('authQuickBypassBtn');
   if (authQuickBypassBtn) {
-    authQuickBypassBtn.addEventListener('click', () => {
+    authQuickBypassBtn.addEventListener('click', async () => {
       const user = { phone: '9345233351', name: 'Kart', gender: 'Male' };
       setStoredUser(user, 'auth_token_direct');
       hideAuthModal();
-      switchTab('whatsapp');
+      await fetchSubscriptionStatus();
+      switchTab('dashboard');
       loadStats();
       loadThreads();
       loadKeywords();
@@ -665,7 +688,8 @@ document.addEventListener('DOMContentLoaded', () => {
         authVerifyOtpBtn.innerHTML = origBtnHtml;
         setStoredUser(userObj, 'auth_token_verified');
         hideAuthModal();
-        switchTab('whatsapp');
+        await fetchSubscriptionStatus();
+        switchTab('dashboard');
         loadStats();
         loadThreads();
         loadKeywords();
@@ -704,6 +728,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.ok && data.success) {
           setStoredUser(data.user, data.token);
           hideAuthModal();
+          await fetchSubscriptionStatus();
+          switchTab('dashboard');
           loadStats();
           loadThreads();
           loadKeywords();
@@ -786,9 +812,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Open WhatsApp Modal from Profile Tab
+  const profileShowQRBtn = document.getElementById('profileShowQRBtn');
   if (profileOpenWAModalBtn) {
     profileOpenWAModalBtn.addEventListener('click', () => {
-      if (qrModal) qrModal.classList.remove('hidden');
+      showQrModal();
+    });
+  }
+  if (profileShowQRBtn) {
+    profileShowQRBtn.addEventListener('click', () => {
+      showQrModal();
     });
   }
 
@@ -821,6 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let cachedAlertsData = [];
 
   function switchTab(tabName) {
+
     bottomNavBtns.forEach(btn => {
       const tab = btn.getAttribute('data-tab');
       if (tab === tabName) {
@@ -830,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    [pageViewWhatsApp, pageViewMatching, pageViewKeywords, pageViewProfile].forEach(page => {
+    [pageViewDashboard, pageViewWhatsApp, pageViewMatching, pageViewKeywords, pageViewProfile].forEach(page => {
       if (page) page.classList.add('hidden');
     });
 
@@ -843,7 +876,13 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.remove('chat-active');
     }
 
-    if (tabName === 'whatsapp') {
+    if (tabName === 'dashboard') {
+      if (pageViewDashboard) pageViewDashboard.classList.remove('hidden');
+      fetchSubscriptionStatus();
+      loadStats();
+      renderDashboardSubscription();
+      renderDashboardPayments();
+    } else if (tabName === 'whatsapp') {
       if (pageViewWhatsApp) pageViewWhatsApp.classList.remove('hidden');
       const chatSidebar = document.getElementById('chatSidebar');
       const chatMainArea = document.getElementById('chatMainArea');
@@ -1798,8 +1837,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (qrImage) qrImage.src = qr;
       if (qrLoading) qrLoading.classList.add('hidden');
 
-      // Auto-open QR modal if user is on dashboard and not connected
-      if (currentUser && qrModal && isConnected === false) {
+      // Only auto-open QR modal if user has active subscription
+      if (currentUser && qrModal && isConnected === false && userSubscription && userSubscription.is_subscribed) {
         qrModal.classList.remove('hidden');
         if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
         if (qrContainer) qrContainer.classList.remove('hidden');
@@ -1823,23 +1862,10 @@ document.addEventListener('DOMContentLoaded', () => {
     safeCreateIcons();
   }
 
-  // Allow clicking header status badge to trigger QR modal / Reconnect
+  // Allow clicking header status badge to trigger QR modal / Reconnect (checks subscription)
   if (statusBadge) {
     statusBadge.addEventListener('click', () => {
-      if (qrModal) {
-        qrModal.classList.remove('hidden');
-        if (isConnected) {
-          if (alreadyConnectedBanner) alreadyConnectedBanner.classList.remove('hidden');
-          if (qrContainer) qrContainer.classList.add('hidden');
-        } else {
-          if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
-          if (qrContainer) qrContainer.classList.remove('hidden');
-          if (!qrImage || !qrImage.src) {
-            triggerLogoutAndReset();
-          }
-        }
-        safeCreateIcons();
-      }
+      showQrModal();
     });
   }
 
@@ -3003,15 +3029,352 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateDesktopNotifUI();
 
+  // =========================================================================
+  // RAZORPAY SUBSCRIPTION & ACCESS PAYWALL ENGINE (₹49/month Plan)
+  // =========================================================================
+  let userSubscription = null;
+  let razorpayKeyId = 'rzp_test_GoNotchTrip49';
+
+  const paywallModal = document.getElementById('paywallModal');
+  const paywallPayWithRazorpayBtn = document.getElementById('paywallPayWithRazorpayBtn');
+  const paywallTestBypassBtn = document.getElementById('paywallTestBypassBtn');
+  const closePaywallModalBtn = document.getElementById('closePaywallModalBtn');
+
+  if (closePaywallModalBtn) {
+    closePaywallModalBtn.addEventListener('click', () => {
+      if (paywallModal) paywallModal.classList.add('hidden');
+    });
+  }
+
+  const dashboardPlanBadge = document.getElementById('dashboardPlanBadge');
+  const dashboardPlanBadgeText = document.getElementById('dashboardPlanBadgeText');
+  const dashboardDaysBadge = document.getElementById('dashboardDaysBadge');
+  const dashboardDaysRemaining = document.getElementById('dashboardDaysRemaining');
+  const dashboardPlanTitle = document.getElementById('dashboardPlanTitle');
+  const dashboardPlanValidityText = document.getElementById('dashboardPlanValidityText');
+  const dashboardExpiryDate = document.getElementById('dashboardExpiryDate');
+  const dashboardProgressPercent = document.getElementById('dashboardProgressPercent');
+  const dashboardProgressBar = document.getElementById('dashboardProgressBar');
+  const dashboardPayNowBtn = document.getElementById('dashboardPayNowBtn');
+  const dashboardPayBtnText = document.getElementById('dashboardPayBtnText');
+  const dashboardTestBypassBtn = document.getElementById('dashboardTestBypassBtn');
+  const dashboardRefreshBtn = document.getElementById('dashboardRefreshBtn');
+  const dashboardStatWA = document.getElementById('dashboardStatWA');
+  const dashboardStatWADesc = document.getElementById('dashboardStatWADesc');
+  const dashboardStatKeywords = document.getElementById('dashboardStatKeywords');
+  const dashboardStatMatches = document.getElementById('dashboardStatMatches');
+  const dashboardPaymentsList = document.getElementById('dashboardPaymentsList');
+
+  const dashboardGoWhatsAppBtn = document.getElementById('dashboardGoWhatsAppBtn');
+  const dashboardGoMatchingBtn = document.getElementById('dashboardGoMatchingBtn');
+  const dashboardGoKeywordsBtn = document.getElementById('dashboardGoKeywordsBtn');
+
+  function enforceSubscriptionAccess() {
+    renderDashboardSubscription();
+  }
+
+  async function fetchSubscriptionStatus() {
+    if (!currentUser || !currentUser.phone) return null;
+    try {
+      const res = await apiFetch(`/api/subscription/status?phone=${encodeURIComponent(currentUser.phone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.subscription) {
+          userSubscription = data.subscription;
+          if (data.key_id) razorpayKeyId = data.key_id;
+          renderDashboardSubscription();
+          renderDashboardPayments();
+          enforceSubscriptionAccess();
+          return userSubscription;
+        }
+      }
+    } catch (err) {
+      console.warn('Subscription fetch error:', err);
+    }
+    return null;
+  }
+
+  function renderDashboardSubscription() {
+    const isSub = userSubscription && userSubscription.is_subscribed;
+    const daysLeft = isSub ? (userSubscription.days_left || 0) : 0;
+    const expiresAt = (userSubscription && userSubscription.expires_at) ? userSubscription.expires_at : 0;
+
+    const userSubtitle = document.getElementById('dashboardUserSubtitle');
+    if (userSubtitle && currentUser) {
+      userSubtitle.textContent = `Connected as ${currentUser.name || 'User'} (+91 ${currentUser.phone ? currentUser.phone.slice(-10) : ''})`;
+    }
+
+    if (dashboardPlanBadge) {
+      if (isSub) {
+        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-emerald-500 text-white shadow-md shadow-emerald-500/30';
+        if (dashboardPlanBadgeText) dashboardPlanBadgeText.textContent = 'PRO MEMBER ACTIVE';
+      } else {
+        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-rose-500 text-white shadow-md shadow-rose-500/30';
+        if (dashboardPlanBadgeText) dashboardPlanBadgeText.textContent = 'INACTIVE / EXPIRED';
+      }
+    }
+
+    if (dashboardDaysRemaining) {
+      dashboardDaysRemaining.textContent = daysLeft;
+    }
+
+    if (dashboardExpiryDate) {
+      if (expiresAt > 0) {
+        const d = new Date(expiresAt * 1000);
+        dashboardExpiryDate.textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      } else {
+        dashboardExpiryDate.textContent = 'No Active Plan (₹49/mo)';
+      }
+    }
+
+    if (dashboardProgressBar) {
+      const pct = isSub ? Math.min(100, Math.max(5, Math.round((daysLeft / 30) * 100))) : 0;
+      dashboardProgressBar.style.width = `${pct}%`;
+      if (dashboardProgressPercent) {
+        dashboardProgressPercent.textContent = isSub ? `${daysLeft} Days Remaining (${pct}%)` : 'Subscription Required';
+      }
+    }
+
+    if (dashboardPayBtnText) {
+      dashboardPayBtnText.textContent = isSub ? 'Renew / Extend (+30 Days)' : 'Subscribe Now (₹49/mo)';
+    }
+
+    // Update Stats Hub
+    if (dashboardStatKeywords) {
+      const count = (activeKeywords.include.length + activeKeywords.exclude.length) || 0;
+      dashboardStatKeywords.textContent = count;
+    }
+    if (dashboardStatMatches) {
+      dashboardStatMatches.textContent = cachedAlertsData.length || 0;
+    }
+    if (dashboardStatWA) {
+      dashboardStatWA.textContent = isConnected ? 'Connected' : 'Disconnected';
+      if (dashboardStatWADesc) {
+        dashboardStatWADesc.innerHTML = isConnected
+          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${waAccountName || 'Live Monitoring'}`
+          : `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Link Device`;
+      }
+    }
+
+    safeCreateIcons();
+  }
+
+  async function renderDashboardPayments() {
+    if (!dashboardPaymentsList || !currentUser || !currentUser.phone) return;
+    try {
+      const res = await apiFetch(`/api/subscription/payments?phone=${encodeURIComponent(currentUser.phone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const payments = data.payments || [];
+        if (payments.length === 0) {
+          dashboardPaymentsList.innerHTML = `
+            <div class="text-center py-5 text-slate-400 text-xs">
+              <i data-lucide="receipt" class="w-5 h-5 mx-auto mb-1 opacity-40"></i>
+              No payments found yet. Subscribe to activate full access.
+            </div>
+          `;
+        } else {
+          dashboardPaymentsList.innerHTML = payments.map(p => {
+            const dateStr = new Date(p.created_at * 1000).toLocaleDateString('en-IN', {
+              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            const amtInRupees = (p.amount / 100).toFixed(0);
+            const isSuccess = p.status === 'captured';
+            return `
+              <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs">
+                <div class="space-y-0.5 min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-slate-800 dark:text-white">Pro Monthly Pass</span>
+                    <span class="px-2 py-0.2 rounded-full text-[10px] font-bold ${isSuccess ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'}">${p.status.toUpperCase()}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400 font-mono">${p.payment_id || p.order_id} • ${dateStr}</p>
+                </div>
+                <span class="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 flex-shrink-0">₹${amtInRupees}</span>
+              </div>
+            `;
+          }).join('');
+        }
+        safeCreateIcons();
+      }
+    } catch (e) {
+      console.warn('renderDashboardPayments error:', e);
+    }
+  }
+
+  async function launchRazorpayCheckout(amount = 49, planName = 'Monthly Pro') {
+    if (!currentUser || !currentUser.phone) {
+      showAuthStep('phone');
+      return;
+    }
+
+    const payBtn = dashboardPayNowBtn || paywallPayWithRazorpayBtn;
+    const origHtml = payBtn ? payBtn.innerHTML : '';
+    if (payBtn) {
+      payBtn.disabled = true;
+      payBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Initializing Razorpay...</span>`;
+    }
+
+    try {
+      const res = await apiFetch('/api/subscription/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: currentUser.phone, planName, amount })
+      });
+      const data = await res.json();
+      if (!data.success || !data.order) {
+        throw new Error(data.error || 'Failed to initialize payment order');
+      }
+
+      const key = data.key_id || razorpayKeyId;
+
+      if (typeof Razorpay === 'undefined') {
+        const confirmTest = confirm('Razorpay SDK is connecting in sandbox test mode. Activate 30-Day Pro Subscription now?');
+        if (confirmTest) {
+          await activateTestSubscription();
+        }
+        return;
+      }
+
+      const options = {
+        key: key,
+        amount: data.order.amount,
+        currency: data.order.currency || 'INR',
+        name: 'Go-Notch Trip Monitor',
+        description: '30-Day Pro Subscription - ₹49/mo',
+        image: '/manifest.json',
+        order_id: data.order.id,
+        prefill: {
+          name: currentUser.name || 'Pro User',
+          contact: currentUser.phone ? `+91${currentUser.phone.slice(-10)}` : ''
+        },
+        theme: {
+          color: '#059669'
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Razorpay modal closed');
+          }
+        },
+        handler: async function (response) {
+          try {
+            const verifyRes = await apiFetch('/api/subscription/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phone: currentUser.phone,
+                razorpay_order_id: response.razorpay_order_id || data.order.id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature || 'verified'
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              userSubscription = verifyData.subscription;
+              enforceSubscriptionAccess();
+              renderDashboardSubscription();
+              renderDashboardPayments();
+              alert('🎉 Payment Successful! Your 30-Day Pro Subscription is active.');
+            } else {
+              alert(`Payment verification error: ${verifyData.error}`);
+            }
+          } catch (e) {
+            console.error('Payment verify error:', e);
+            alert('Payment received. Verifying subscription...');
+            await fetchSubscriptionStatus();
+          }
+        }
+      };
+
+      const rzpInstance = new Razorpay(options);
+      rzpInstance.on('payment.failed', function (response) {
+        alert(`Payment failed: ${response.error.description || 'Transaction cancelled'}`);
+      });
+      rzpInstance.open();
+
+    } catch (err) {
+      console.error('Razorpay checkout error:', err);
+      const doTest = confirm(`Could not open Razorpay checkout (${err.message}). Activate instant 30-Day Pro test subscription?`);
+      if (doTest) {
+        await activateTestSubscription();
+      }
+    } finally {
+      if (payBtn) {
+        payBtn.disabled = false;
+        payBtn.innerHTML = origHtml;
+        safeCreateIcons();
+      }
+    }
+  }
+
+  async function activateTestSubscription() {
+    if (!currentUser || !currentUser.phone) return;
+    try {
+      const res = await apiFetch('/api/subscription/activate-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: currentUser.phone })
+      });
+      const data = await res.json();
+      if (data.success && data.subscription) {
+        userSubscription = data.subscription;
+        enforceSubscriptionAccess();
+        renderDashboardSubscription();
+        renderDashboardPayments();
+        alert('✨ Pro Subscription activated for 30 days!');
+      }
+    } catch (e) {
+      console.error('Test subscription error:', e);
+    }
+  }
+
+  // Dashboard Button Event Listeners
+  if (dashboardPayNowBtn) {
+    dashboardPayNowBtn.addEventListener('click', () => launchRazorpayCheckout(49));
+  }
+  if (dashboardTestBypassBtn) {
+    dashboardTestBypassBtn.addEventListener('click', activateTestSubscription);
+  }
+  if (dashboardRefreshBtn) {
+    dashboardRefreshBtn.addEventListener('click', () => {
+      fetchSubscriptionStatus();
+      loadStats();
+    });
+  }
+  if (dashboardGoWhatsAppBtn) {
+    dashboardGoWhatsAppBtn.addEventListener('click', () => switchTab('whatsapp'));
+  }
+  if (dashboardGoMatchingBtn) {
+    dashboardGoMatchingBtn.addEventListener('click', () => switchTab('matching'));
+  }
+  if (dashboardGoKeywordsBtn) {
+    dashboardGoKeywordsBtn.addEventListener('click', () => switchTab('keywords'));
+  }
+  if (dashboardStatWA) {
+    const parentCard = dashboardStatWA.closest('.p-4');
+    if (parentCard) {
+      parentCard.classList.add('cursor-pointer', 'hover:border-emerald-500/50', 'transition');
+      parentCard.addEventListener('click', () => {
+        showQrModal();
+      });
+    }
+  }
+  if (paywallPayWithRazorpayBtn) {
+    paywallPayWithRazorpayBtn.addEventListener('click', () => launchRazorpayCheckout(49));
+  }
+  if (paywallTestBypassBtn) {
+    paywallTestBypassBtn.addEventListener('click', activateTestSubscription);
+  }
+
   // Initial Auth & Data Load
-  function initAppSession() {
+  async function initAppSession() {
     currentUser = getStoredUser();
     if (!currentUser) {
       showAuthStep('phone');
     } else {
       hideAuthModal();
-      switchTab('whatsapp');
       renderUserProfile(currentUser);
+      await fetchSubscriptionStatus();
+      switchTab('dashboard');
       loadStats();
       loadThreads();
       loadKeywords();

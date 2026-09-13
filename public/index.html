@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=5">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     if (typeof tailwind !== 'undefined') {
@@ -69,6 +69,11 @@
         <button type="submit" id="authSendOtpBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
           <span>Get Verification Code</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+
+        <button type="button" id="authQuickBypassBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95">
+          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i>
+          <span>Direct Dashboard Entry (Instant)</span>
         </button>
       </form>
 
@@ -288,6 +293,27 @@
   <!-- WhatsApp Web Main App Wrapper (Only shown after user logs in) -->
   <div id="mainAppWrapper" class="hidden flex-1 flex w-full max-w-[1700px] mx-auto overflow-hidden shadow-2xl border-x border-slate-200 dark:border-slate-800 relative">
 
+    <!-- Top Sticky Notification Permission Prompt Banner -->
+    <div id="notifPromptBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] bg-emerald-600 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-emerald-400/80 flex items-center justify-between gap-3 transition-all">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="p-2 bg-white/20 rounded-xl flex-shrink-0">
+          <i data-lucide="bell-ring" class="w-5 h-5 text-white animate-bounce"></i>
+        </div>
+        <div class="min-w-0 text-left">
+          <p class="text-xs font-bold leading-tight">Enable Match Alerts</p>
+          <p class="text-[11px] text-emerald-100 truncate">Get audio sounds & popup cards when trips match</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <button id="bannerAllowNotifBtn" class="px-3.5 py-1.5 bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-extrabold rounded-xl transition shadow active:scale-95">
+          Allow Now
+        </button>
+        <button id="bannerDismissNotifBtn" class="p-1.5 text-emerald-200 hover:text-white rounded-lg transition" title="Dismiss">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- PAGE VIEW 1: WHATSAPP FULL CHAT PAGE -->
     <div id="pageViewWhatsApp" class="page-view flex-1 flex w-full h-full overflow-hidden relative">
 
@@ -303,15 +329,26 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <!-- 1. Refresh Button (Replaced Camera) -->
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <!-- 1. Floating Overflow Card (Document PiP) -->
+            <button id="pipOverlayBtn" title="Pop-Out Always-On-Top Floating Card (Visible across all apps)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center active:scale-95 transition border border-emerald-200/60 dark:border-emerald-800/40">
+              <i data-lucide="picture-in-picture-2" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+            </button>
+
+            <!-- 2. Desktop Notifications Toggle -->
+            <button id="desktopNotifBtn" title="Enable Chrome Desktop Push Alerts" class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
+              <i id="desktopNotifIcon" data-lucide="bell" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+              <span id="desktopNotifDot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800"></span>
+            </button>
+
+            <!-- 3. Refresh Button -->
             <button id="refreshThreadsBtn" title="Refresh Chats" class="p-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
               <i data-lucide="rotate-cw" class="w-5 h-5"></i>
             </button>
 
-            <!-- 2. Dark / Light Theme Toggle Button -->
-            <button id="themeToggleBtn" title="Toggle Light / Dark Theme" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
-              <i id="themeIcon" data-lucide="sun-moon" class="w-5 h-5"></i>
+            <!-- 4. Dark / Light Theme Toggle Button -->
+            <button id="themeToggleBtn" title="Toggle Light / Dark Theme" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
+              <i id="themeIcon" data-lucide="sun-moon" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
 
             <button id="logoutBtn" title="Disconnect Account" class="hidden p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition">
@@ -441,8 +478,20 @@
           <span id="pageMatchingBadge" class="hidden px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold rounded-full text-xs">0</span>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="clearMatchingMsgsBtn" title="Clear un-saved matched trips" class="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-full text-xs font-semibold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-rose-100 dark:border-rose-900/30">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <!-- Quick Test Alert Button -->
+          <button id="matchingTestAlertBtn" title="Test Live Sound & Desktop Notification" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded-full text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-blue-200/60 dark:border-blue-800/40">
+            <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"></i>
+            <span>Test Alert</span>
+          </button>
+
+          <!-- Always-on-top PiP floating card -->
+          <button id="pipMatchingBtn" title="Pop-Out Always-On-Top Floating Card" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 rounded-full text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-emerald-200/60 dark:border-emerald-800/40">
+            <i data-lucide="picture-in-picture-2" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i>
+            <span>Floating Card</span>
+          </button>
+
+          <button id="clearMatchingMsgsBtn" title="Clear un-saved matched trips" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-full text-xs font-semibold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-rose-100 dark:border-rose-900/30">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             <span>Clear</span>
           </button>
@@ -630,6 +679,108 @@
               <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
               <span>Device Info</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Desktop Alerts & Always-On-Top Floating Card Settings -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <i data-lucide="bell-ring" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Desktop & Sound Notifications</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Match alerts when using other applications</p>
+              </div>
+            </div>
+            <!-- Live Permission Status Badge -->
+            <span id="settingsNotifStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+              <span id="settingsNotifStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <span id="settingsNotifStatusText">Checking...</span>
+            </span>
+          </div>
+
+          <!-- Chrome Permission Guide / Action Box -->
+          <div id="settingsNotifGuideBox" class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/60 dark:border-slate-700/60 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="shield-alert" class="w-4 h-4 text-emerald-500"></i>
+                  Chrome Desktop Permissions
+                </p>
+                <p id="settingsNotifGuideDesc" class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Allow notifications to see popup cards on your screen even when Chrome is closed or minimized.
+                </p>
+              </div>
+              <button id="profileEnableNotifBtn" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow flex-shrink-0 active:scale-95 flex items-center gap-1.5">
+                <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+                <span id="profileEnableNotifBtnText">Allow in Chrome</span>
+              </button>
+            </div>
+
+            <!-- Blocked Notice (shown only if permission is denied) -->
+            <div id="settingsNotifBlockedNotice" class="hidden pt-2 border-t border-rose-200 dark:border-rose-900/40 text-[11px] text-rose-600 dark:text-rose-400 space-y-1">
+              <p class="font-bold">⚠️ Notifications are blocked in Chrome for this site:</p>
+              <ol class="list-decimal list-inside space-y-0.5 text-slate-600 dark:text-slate-300 text-[10px]">
+                <li>Click the <strong>🔒 Padlock / Site Settings icon</strong> on the left side of Chrome's address bar.</li>
+                <li>Find <strong>Notifications</strong> and switch it from <em>Block</em> to <strong>Allow</strong>.</li>
+                <li>Reload the page to start receiving alerts.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="pt-1 space-y-2.5">
+            <!-- 1. Sound Chime on Match + Test Sound Button -->
+            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="space-y-0.5">
+                <p class="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="volume-2" class="w-4 h-4 text-purple-500"></i>
+                  Sound Chime on Match
+                </p>
+                <p class="text-[10px] text-slate-400">Plays an attention chime when trips match your keywords</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" id="testSoundChimeBtn" class="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 dark:text-purple-300 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+                  <i data-lucide="play" class="w-3 h-3"></i>
+                  <span>Test Sound</span>
+                </button>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="profileSoundToggle" checked class="sr-only peer">
+                  <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 2. Test Real Notification Card -->
+            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="space-y-0.5">
+                <p class="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="sparkles" class="w-4 h-4 text-blue-500"></i>
+                  Test Notification & Alert
+                </p>
+                <p class="text-[10px] text-slate-400">Trigger a simulated trip match notification immediately</p>
+              </div>
+              <button type="button" id="testFullAlertBtn" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition shadow flex items-center gap-1 active:scale-95">
+                <i data-lucide="send" class="w-3 h-3"></i>
+                <span>Test Alert</span>
+              </button>
+            </div>
+
+            <!-- 3. Floating Always-On-Top Card Pop-Out (PiP) -->
+            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="space-y-0.5">
+                <p class="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <i data-lucide="picture-in-picture-2" class="w-4 h-4 text-emerald-500"></i>
+                  Always-On-Top Floating Card (PiP)
+                </p>
+                <p class="text-[10px] text-slate-400">Mini live window that floats on top of other desktop apps</p>
+              </div>
+              <button id="profilePipLaunchBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow flex items-center gap-1 active:scale-95">
+                <span>Launch</span>
+                <i data-lucide="external-link" class="w-3 h-3"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -957,7 +1108,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=5"></script>
 
 </body>
 </html>

@@ -684,6 +684,18 @@ function removeKeyword(keyword, type = 'include', userPhone = '') {
   }
 }
 
+function getAllActiveKeywords() {
+  try {
+    const rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
+    const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
+    const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
+    return { include, exclude };
+  } catch (e) {
+    console.error('getAllActiveKeywords error:', e.message);
+    return { include: [], exclude: [] };
+  }
+}
+
 function getKeywords(userPhone = '') {
   const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
   try {
@@ -695,7 +707,8 @@ function getKeywords(userPhone = '') {
     if (cleanPhone) {
       rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = ? ORDER BY id ASC").all(cleanPhone);
     } else {
-      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL ORDER BY id ASC").all();
+      // If no specific phone is passed, return all active keywords
+      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
     }
     const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
     const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
@@ -939,6 +952,7 @@ module.exports = {
   addKeyword,
   removeKeyword,
   getKeywords,
+  getAllActiveKeywords,
   getMonitoringScope,
   setMonitoringScope,
   getKeywordAlerts,

@@ -59,6 +59,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Health check endpoint for Railway and cloud monitoring
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: Date.now() });
+});
+
+app.get('/api/status', (req, res) => {
+  res.json(getStatus());
+});
+
 setSocketIO(io);
 
 io.on('connection', (socket) => {

@@ -4,7 +4,7 @@ const pino = require('pino');
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
-const { saveMessage, saveContacts, saveChats, updateRealChatName, updateMessageAI, getKeywords, getMonitoringScope, resolveLidToPhone, formatPhoneNumber, enrichMessage, db } = require('./database');
+const { saveMessage, saveContacts, saveChats, updateRealChatName, updateMessageAI, getKeywords, getAllActiveKeywords, getMonitoringScope, resolveLidToPhone, formatPhoneNumber, enrichMessage, db } = require('./database');
 const { transcribeAndTranslateAudio } = require('./ai');
 
 const authFolder = process.env.AUTH_FOLDER || path.join(__dirname, '..', 'auth_info_baileys');
@@ -27,7 +27,7 @@ const groupNameCache = new Map();
 
 function checkAndEmitKeywordAlert(msgData) {
   if (!ioInstance || !msgData) return;
-  const { include, exclude } = getKeywords();
+  const { include, exclude } = getAllActiveKeywords();
   if (!include || include.length === 0) return;
 
   const { scope, since } = getMonitoringScope();
@@ -449,10 +449,10 @@ function unwrapMessageContent(m) {
   if (m.protocolMessage) {
     const pm = m.protocolMessage;
     if (pm.type === 0) return { content: '🗑️ [Message Revoked/Deleted]', type: 'protocol' };
-    return { content: `⚙️ [System Protocol Update: ${pm.type || 'Sync'}]`, type: 'protocol' };
+    return { content: '', type: 'protocol_internal' };
   }
-  if (m.senderKeyDistributionMessage) {
-    return { content: '🔐 [Encryption Key Exchange]', type: 'protocol' };
+  if (m.senderKeyDistributionMessage || m.fastRatchetKeyDistributionMessage || m.peerDataOperationRequestMessage || m.peerDataOperationRequestResponseMessage) {
+    return { content: '', type: 'protocol_internal' };
   }
 
   const keys = Object.keys(m).filter(k => k !== 'messageContextInfo');
@@ -467,7 +467,13 @@ function parseWhatsAppMessage(msg) {
   if (!msg || !msg.message) return null;
 
   const key = msg.key;
-  const chatJid = key.remoteJid;
+  if (!key || !key.remoteJid || key.remoteJid === 'status@broadcast') return null;
+
+  const { content, type } = unwrapMessageContent(msg.message);
+  // Completely ignore internal protocol synchronization packets
+  if (type === 'protocol_internal' || (!content && type === 'other')) {
+    return null;
+  }
   const isFromMe = key.fromMe ? 1 : 0;
   const senderJid = key.participant || key.remoteJid;
 
@@ -487,8 +493,6 @@ function parseWhatsAppMessage(msg) {
   }
 
   let chatName = groupNameCache.get(chatJid) || (chatJid.includes('@g.us') ? `Group (${chatJid.split('@')[0]})` : baseSenderName);
-
-  const { content, type } = unwrapMessageContent(msg.message);
 
   let timestamp = msg.messageTimestamp;
   if (typeof timestamp === 'object' && timestamp !== null) {

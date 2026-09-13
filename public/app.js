@@ -1790,31 +1790,57 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (qr) {
       isConnected = false;
       if (statusText) statusText.textContent = 'Scan QR Code';
-      if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Scan QR Code`;
+      if (statusBadge) {
+        statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow animate-pulse"><i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Link WhatsApp</button>`;
+      }
 
       if (qrFrame) qrFrame.classList.remove('hidden');
       if (qrImage) qrImage.src = qr;
       if (qrLoading) qrLoading.classList.add('hidden');
 
-      // CRITICAL: NEVER open QR modal automatically without user being logged in
-      if (!currentUser && qrModal) {
-        qrModal.classList.add('hidden');
+      // Auto-open QR modal if user is on dashboard and not connected
+      if (currentUser && qrModal && isConnected === false) {
+        qrModal.classList.remove('hidden');
+        if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
+        if (qrContainer) qrContainer.classList.remove('hidden');
       }
 
       if (logoutBtn) logoutBtn.classList.add('hidden');
     } else if (status === 'connecting') {
+      isConnected = false;
       if (statusText) statusText.textContent = 'Connecting...';
-      if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...`;
-
-      if (qrModal) qrModal.classList.add('hidden');
+      if (statusBadge) {
+        statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold rounded-lg"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...</button>`;
+      }
     } else {
+      isConnected = false;
       if (statusText) statusText.textContent = 'Disconnected';
-      if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> Disconnected`;
-
-      if (qrModal) qrModal.classList.add('hidden');
+      if (statusBadge) {
+        statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Reconnect WhatsApp</button>`;
+      }
     }
 
     safeCreateIcons();
+  }
+
+  // Allow clicking header status badge to trigger QR modal / Reconnect
+  if (statusBadge) {
+    statusBadge.addEventListener('click', () => {
+      if (qrModal) {
+        qrModal.classList.remove('hidden');
+        if (isConnected) {
+          if (alreadyConnectedBanner) alreadyConnectedBanner.classList.remove('hidden');
+          if (qrContainer) qrContainer.classList.add('hidden');
+        } else {
+          if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
+          if (qrContainer) qrContainer.classList.remove('hidden');
+          if (!qrImage || !qrImage.src) {
+            triggerLogoutAndReset();
+          }
+        }
+        safeCreateIcons();
+      }
+    });
   }
 
   logoutBtn.addEventListener('click', async () => {

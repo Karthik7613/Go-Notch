@@ -2432,10 +2432,22 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
   document.addEventListener('click', unlockAudio, { passive: true });
-  document.addEventListener('touchstart', unlockAudio, { passive: true });
-  document.addEventListener('keydown', unlockAudio, { passive: true });
+  let alertSoundInterval = null;
+  let alertSoundStopTimer = null;
+
+  function stopAlertSoundLoop() {
+    if (alertSoundInterval) {
+      clearInterval(alertSoundInterval);
+      alertSoundInterval = null;
+    }
+    if (alertSoundStopTimer) {
+      clearTimeout(alertSoundStopTimer);
+      alertSoundStopTimer = null;
+    }
+  }
 
   window.addEventListener('focus', () => {
+    stopAlertSoundLoop();
     if (titleFlashInterval) {
       clearInterval(titleFlashInterval);
       titleFlashInterval = null;
@@ -2443,8 +2455,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 1. High-Clarity Executive Attention Chime (Multi-Layered Harmonic Ping & Ring)
-  function playAlertChime() {
+  document.addEventListener('click', () => {
+    unlockAudio();
+    stopAlertSoundLoop();
+  }, { passive: true });
+  document.addEventListener('touchstart', () => {
+    unlockAudio();
+    stopAlertSoundLoop();
+  }, { passive: true });
+  document.addEventListener('keydown', () => {
+    unlockAudio();
+    stopAlertSoundLoop();
+  }, { passive: true });
+
+  // 1. High-Clarity Single Executive Chime Pulse
+  function playAlertChimeSingle() {
     if (!soundAlertsEnabled) return;
     try {
       unlockAudio();
@@ -2461,12 +2486,11 @@ document.addEventListener('DOMContentLoaded', () => {
       compressor.release.setValueAtTime(0.2, now);
 
       const masterGain = audioCtx.createGain();
-      masterGain.gain.setValueAtTime(0.9, now);
+      masterGain.gain.setValueAtTime(0.95, now);
 
       compressor.connect(masterGain);
       masterGain.connect(audioCtx.destination);
 
-      // Helper function to synthesize a crisp bell tone with harmonics
       function playTone(freq, startTime, duration, vol, waveType = 'sine') {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -2484,23 +2508,42 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Pulse 1: Attention Pre-Ping (Crisp dual-tone wake chime)
-      playTone(1046.50, now, 0.18, 0.6, 'sine');       // C6
-      playTone(2093.00, now, 0.12, 0.35, 'triangle');   // C7 Shimmer
+      playTone(1046.50, now, 0.18, 0.65, 'sine');       // C6
+      playTone(2093.00, now, 0.12, 0.4, 'triangle');   // C7 Shimmer
 
       // Pulse 2: Resonant Major Triad Uplift (Main Body & Rich Ring)
       const p2 = now + 0.14;
-      playTone(1174.66, p2, 0.85, 0.75, 'sine');       // D6 Root
-      playTone(1479.98, p2, 0.75, 0.65, 'triangle');   // F#6 Warm Third
-      playTone(1760.00, p2, 0.95, 0.8, 'sine');        // A6 Bright Fifth
-      playTone(2349.32, p2, 0.6, 0.4, 'sine');         // D7 High Sparkle
+      playTone(1174.66, p2, 0.85, 0.8, 'sine');        // D6 Root
+      playTone(1479.98, p2, 0.75, 0.7, 'triangle');    // F#6 Warm Third
+      playTone(1760.00, p2, 0.95, 0.85, 'sine');       // A6 Bright Fifth
+      playTone(2349.32, p2, 0.6, 0.45, 'sine');        // D7 High Sparkle
 
       // Pulse 3: Crystal Accent Tail (Long Ringing Shimmer)
       const p3 = now + 0.28;
-      playTone(1760.00, p3, 1.1, 0.7, 'sine');         // A6
-      playTone(2637.02, p3, 0.9, 0.35, 'triangle');    // E7
+      playTone(1760.00, p3, 1.1, 0.75, 'sine');        // A6
+      playTone(2637.02, p3, 0.9, 0.4, 'triangle');     // E7
     } catch (e) {
       console.warn('Audio chime error:', e);
     }
+  }
+
+  // 15-Second Continuous Alert Ring (repeats every 1.8s for 15s until user attends)
+  function playAlertChime(durationMs = 15000) {
+    if (!soundAlertsEnabled) return;
+    stopAlertSoundLoop();
+
+    // Play immediately
+    playAlertChimeSingle();
+
+    // Repeat in loop every 1.8s for 15 seconds
+    alertSoundInterval = setInterval(() => {
+      playAlertChimeSingle();
+    }, 1800);
+
+    // Stop precisely after 15 seconds
+    alertSoundStopTimer = setTimeout(() => {
+      stopAlertSoundLoop();
+    }, durationMs);
   }
 
   // 2. Desktop Notification UI, Status Badge & Dispatch
@@ -2634,6 +2677,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       notif.onclick = () => {
+        stopAlertSoundLoop();
         window.focus();
         if (msg.chat_jid && msg.message_id) {
           switchTab('whatsapp');

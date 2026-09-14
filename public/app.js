@@ -2591,6 +2591,143 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // =========================================================================
+  // 📲 MOBILE PWA 1-CLICK APP INSTALL ENGINE
+  // =========================================================================
+  let deferredInstallPrompt = null;
+  const installAppModal = document.getElementById('installAppModal');
+  const closeInstallAppModalBtn = document.getElementById('closeInstallAppModalBtn');
+  const confirmInstallAppBtn = document.getElementById('confirmInstallAppBtn');
+  const confirmInstallAppBtnText = document.getElementById('confirmInstallAppBtnText');
+  const dismissInstallAppBtn = document.getElementById('dismissInstallAppBtn');
+  const headerInstallAppBtn = document.getElementById('headerInstallAppBtn');
+  const manualInstallGuide = document.getElementById('manualInstallGuide');
+  const manualInstallGuideTitle = document.getElementById('manualInstallGuideTitle');
+  const manualInstallGuideSteps = document.getElementById('manualInstallGuideSteps');
+
+  function isRunningStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true ||
+           document.referrer.includes('android-app://') ||
+           window.location.search.includes('source=pwa');
+  }
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(window.navigator.userAgent.toLowerCase());
+  }
+
+  function isMobileDevice() {
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase()) ||
+           (window.innerWidth <= 768);
+  }
+
+  function showInstallAppModal() {
+    if (isRunningStandalone()) return;
+    if (installAppModal) {
+      installAppModal.classList.remove('hidden');
+      installAppModal.style.display = 'flex';
+    }
+    safeCreateIcons();
+  }
+
+  function hideInstallAppModal() {
+    if (installAppModal) {
+      installAppModal.classList.add('hidden');
+      installAppModal.style.display = 'none';
+    }
+  }
+
+  // Intercept Chrome & Android PWA Install Event
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    console.log('📲 PWA beforeinstallprompt captured');
+
+    // Show Install App button in top dashboard header
+    if (headerInstallAppBtn && !isRunningStandalone()) {
+      headerInstallAppBtn.classList.remove('hidden');
+    }
+
+    // Automatically prompt mobile users to install the app on first visit
+    const hasSeenPrompt = sessionStorage.getItem('pwa_install_prompt_seen');
+    if (!isRunningStandalone() && isMobileDevice() && !hasSeenPrompt) {
+      sessionStorage.setItem('pwa_install_prompt_seen', 'true');
+      setTimeout(() => {
+        showInstallAppModal();
+      }, 1200);
+    }
+  });
+
+  // When app finishes installation
+  window.addEventListener('appinstalled', () => {
+    console.log('🎉 Go-Notch app installed successfully to home screen!');
+    deferredInstallPrompt = null;
+    hideInstallAppModal();
+    if (headerInstallAppBtn) headerInstallAppBtn.classList.add('hidden');
+  });
+
+  // Handle Install Button Click
+  async function triggerAppInstallation() {
+    if (deferredInstallPrompt) {
+      try {
+        if (confirmInstallAppBtnText) confirmInstallAppBtnText.textContent = 'Installing...';
+        await deferredInstallPrompt.prompt();
+        const choiceResult = await deferredInstallPrompt.userChoice;
+        console.log('Install prompt result:', choiceResult.outcome);
+        if (choiceResult.outcome === 'accepted') {
+          hideInstallAppModal();
+          if (headerInstallAppBtn) headerInstallAppBtn.classList.add('hidden');
+          deferredInstallPrompt = null;
+        }
+      } catch (err) {
+        console.warn('Install error:', err);
+      } finally {
+        if (confirmInstallAppBtnText) confirmInstallAppBtnText.textContent = 'Install Go-Notch App';
+      }
+    } else if (isIOS()) {
+      // iOS Safari doesn't support programmatic beforeinstallprompt
+      if (manualInstallGuide) manualInstallGuide.classList.remove('hidden');
+      if (manualInstallGuideTitle) manualInstallGuideTitle.textContent = 'How to Install on iPhone Safari:';
+      if (manualInstallGuideSteps) {
+        manualInstallGuideSteps.innerHTML = `
+          <li>Tap the <strong>Share</strong> button <span class="inline-block px-1 bg-white/40 dark:bg-black/30 rounded font-bold">⎋ / 📤</span> in Safari toolbar</li>
+          <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+          <li>Tap <strong>"Add"</strong> in the top-right corner to finish</li>
+        `;
+      }
+      safeCreateIcons();
+    } else {
+      // Android / Chrome fallback
+      if (manualInstallGuide) manualInstallGuide.classList.remove('hidden');
+      if (manualInstallGuideTitle) manualInstallGuideTitle.textContent = 'How to Install in Chrome:';
+      if (manualInstallGuideSteps) {
+        manualInstallGuideSteps.innerHTML = `
+          <li>Tap the <strong>⋮ (three dots menu)</strong> in top-right corner of Chrome</li>
+          <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong></li>
+          <li>Confirm by tapping <strong>"Install"</strong></li>
+        `;
+      }
+      safeCreateIcons();
+    }
+  }
+
+  if (confirmInstallAppBtn) confirmInstallAppBtn.addEventListener('click', triggerAppInstallation);
+  if (headerInstallAppBtn) headerInstallAppBtn.addEventListener('click', showInstallAppModal);
+  if (closeInstallAppModalBtn) closeInstallAppModalBtn.addEventListener('click', hideInstallAppModal);
+  if (dismissInstallAppBtn) dismissInstallAppBtn.addEventListener('click', hideInstallAppModal);
+
+  // Auto-detect mobile browser on load if beforeinstallprompt didn't fire immediately (e.g. iOS or manual)
+  setTimeout(() => {
+    if (!isRunningStandalone()) {
+      if (headerInstallAppBtn) headerInstallAppBtn.classList.remove('hidden');
+      const hasSeenPrompt = sessionStorage.getItem('pwa_install_prompt_seen');
+      if (isMobileDevice() && !hasSeenPrompt) {
+        sessionStorage.setItem('pwa_install_prompt_seen', 'true');
+        showInstallAppModal();
+      }
+    }
+  }, 2000);
+
   if (exportThreadBtn) {
     exportThreadBtn.addEventListener('click', () => {
       if (activeChatJid) {

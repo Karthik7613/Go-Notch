@@ -536,14 +536,23 @@ function parseWhatsAppMessage(msg) {
 async function logoutWhatsApp() {
   try {
     if (sock) {
-      await sock.logout();
+      sock.ev.removeAllListeners();
+      if (sock.ws) sock.ws.close();
+      await Promise.race([
+        sock.logout().catch(() => {}),
+        new Promise(r => setTimeout(r, 1000))
+      ]);
     }
   } catch (e) {
     console.log('Error during logout:', e.message);
   }
+  sock = null;
 
   if (fs.existsSync(authFolder)) {
-    fs.rmSync(authFolder, { recursive: true, force: true });
+    try { fs.rmSync(authFolder, { recursive: true, force: true }); } catch (e) {}
+  }
+  if (!fs.existsSync(authFolder)) {
+    try { fs.mkdirSync(authFolder, { recursive: true }); } catch (e) {}
   }
 
   connectionStatus = 'disconnected';
@@ -552,7 +561,9 @@ async function logoutWhatsApp() {
   groupNameCache.clear();
   emitStatus();
 
-  setTimeout(connectToWhatsApp, 1000);
+  setTimeout(() => {
+    connectToWhatsApp();
+  }, 500);
 }
 
 const os = require('os');

@@ -620,14 +620,8 @@ function getStats() {
   };
 }
 
-const DEFAULT_INCLUDE_KEYWORDS = [
-  'chennai', 'bangalore', 'airport', 'coimbatore', 'madurai', 'hyderabad',
-  'trichy', 'salem', 'pondicherry', 'ooty', 'kodaikanal', 'munnar', 'coorg',
-  'mysore', 'calicut', 'cochin', 'tirupati', 'vellore', 'hosur', 'drop',
-  'pickup', 'round trip', 'one way', 'urgent', 'available', 'taxi', 'cab',
-  'innova', 'etios', 'ertiga', 'sedan', 'suv', 'crysta'
-];
-const DEFAULT_EXCLUDE_KEYWORDS = ['vacant', 'vacant chennai', 'free', 'going', 'reaching time'];
+const DEFAULT_INCLUDE_KEYWORDS = [];
+const DEFAULT_EXCLUDE_KEYWORDS = ['vacant', 'going', 'reaching', 'free', 'waiting'];
 
 function ensureUserHasKeywords(userPhone) {
   if (!userPhone) return;
@@ -635,27 +629,30 @@ function ensureUserHasKeywords(userPhone) {
   if (!cleanPhone) return;
 
   try {
+    const initSetting = db.prepare("SELECT value FROM settings WHERE key = ?").get(`kw_init_${cleanPhone}`);
+    if (initSetting) return;
+
     const countRow = db.prepare("SELECT COUNT(*) as cnt FROM keywords WHERE user_phone = ?").get(cleanPhone);
-    if (countRow && countRow.cnt > 0) return;
+    if (countRow && countRow.cnt > 0) {
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, '1')").run(`kw_init_${cleanPhone}`);
+      return;
+    }
 
     const now = Math.floor(Date.now() / 1000);
     const insertStmt = db.prepare("INSERT OR IGNORE INTO keywords (keyword, type, user_phone, created_at) VALUES (?, ?, ?, ?)");
 
-    const globalRows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL").all();
-    if (globalRows && globalRows.length > 0) {
-      for (const r of globalRows) {
-        if (r.keyword && r.keyword.trim()) {
-          insertStmt.run(r.keyword.trim().toLowerCase(), r.type || 'include', cleanPhone, now);
-        }
-      }
-    } else {
-      for (const kw of DEFAULT_INCLUDE_KEYWORDS) {
+    for (const kw of DEFAULT_INCLUDE_KEYWORDS) {
+      if (kw && kw.trim()) {
         insertStmt.run(kw.trim().toLowerCase(), 'include', cleanPhone, now);
       }
-      for (const kw of DEFAULT_EXCLUDE_KEYWORDS) {
+    }
+    for (const kw of DEFAULT_EXCLUDE_KEYWORDS) {
+      if (kw && kw.trim()) {
         insertStmt.run(kw.trim().toLowerCase(), 'exclude', cleanPhone, now);
       }
     }
+
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, '1')").run(`kw_init_${cleanPhone}`);
   } catch (e) {
     console.error('ensureUserHasKeywords error:', e.message);
   }
@@ -735,15 +732,17 @@ function getKeywords(userPhone = '') {
     if (cleanPhone) {
       rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = ? ORDER BY id ASC").all(cleanPhone);
     } else {
-      // If no specific phone is passed, return all active keywords
-      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords ORDER BY id ASC").all();
+      rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL ORDER BY id ASC").all();
     }
     const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
-    const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
+    let exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
+    if (!cleanPhone && exclude.length === 0) {
+      exclude = [...DEFAULT_EXCLUDE_KEYWORDS];
+    }
     return { include, exclude };
   } catch (e) {
     console.error('getKeywords error:', e.message);
-    return { include: [], exclude: [] };
+    return { include: [], exclude: cleanPhone ? [] : [...DEFAULT_EXCLUDE_KEYWORDS] };
   }
 }
 
@@ -883,8 +882,11 @@ function getKeywordAlerts(limit = 100, userPhone = '') {
 function findUserByPhone(phone) {
   if (!phone) return null;
   const cleanPhone = String(phone).replace(/\D/g, '');
+  const p10 = cleanPhone.length === 12 && cleanPhone.startsWith('91') ? cleanPhone.slice(2) : cleanPhone;
+  const p12 = p10.length === 10 ? `91${p10}` : cleanPhone;
   try {
-    return db.prepare('SELECT * FROM users WHERE phone = ? OR phone = ? OR phone = ?').get(cleanPhone, `+${cleanPhone}`, `91${cleanPhone}`);
+    return db.prepare('SELECT * FROM users WHERE phone = ? OR phone = ? OR phone = ? OR phone = ? OR phone = ?')
+      .get(cleanPhone, p10, p12, `+${p12}`, `+${p10}`);
   } catch (e) {
     console.error('findUserByPhone error:', e.message);
     return null;
@@ -900,10 +902,12 @@ function createUser(phone, name, gender = 'Male') {
     if (existing) {
       db.prepare('UPDATE users SET name = ?, gender = ?, updated_at = ? WHERE id = ?')
         .run(name || existing.name, gender || existing.gender, now, existing.id);
+      ensureUserHasKeywords(cleanPhone);
       return findUserByPhone(cleanPhone);
     }
     const info = db.prepare('INSERT INTO users (phone, name, gender, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
       .run(cleanPhone, name || 'User', gender || 'Male', now, now);
+    ensureUserHasKeywords(cleanPhone);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
   } catch (e) {
     console.error('createUser error:', e.message);
@@ -916,9 +920,13 @@ function updateUserProfile(phone, name, gender) {
   const cleanPhone = String(phone).replace(/\D/g, '');
   const now = Math.floor(Date.now() / 1000);
   try {
-    db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), updated_at = ? WHERE phone = ? OR phone = ?')
-      .run(name || null, gender || null, now, cleanPhone, `91${cleanPhone}`);
-    return findUserByPhone(cleanPhone);
+    const existing = findUserByPhone(cleanPhone);
+    if (existing) {
+      db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), updated_at = ? WHERE id = ?')
+        .run(name || null, gender || null, now, existing.id);
+      return findUserByPhone(cleanPhone);
+    }
+    return createUser(cleanPhone, name, gender);
   } catch (e) {
     console.error('updateUserProfile error:', e.message);
     return null;
@@ -945,11 +953,6 @@ function verifyOtp(phone, otp) {
   const cleanPhone = String(phone).replace(/\D/g, '');
   const cleanOtp = String(otp).trim();
   const now = Math.floor(Date.now() / 1000);
-
-  // Allow default fallback OTP '1234' for developer / fast testing
-  if (cleanOtp === '1234') {
-    return true;
-  }
 
   try {
     const row = db.prepare('SELECT * FROM otps WHERE phone = ? AND expires_at >= ?').get(cleanPhone, now);

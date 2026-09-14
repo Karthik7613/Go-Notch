@@ -155,6 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterUnreadBtn) filterUnreadBtn.addEventListener('click', () => setFilter('unread'));
   if (filterChannelsBtn) filterChannelsBtn.addEventListener('click', () => setFilter('channels'));
 
+  let currentQrData = null;
+
   function showQrModal() {
     if (!currentUser) {
       showAuthStep('phone');
@@ -173,8 +175,14 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
         if (qrContainer) qrContainer.classList.remove('hidden');
-        if (!qrImage || !qrImage.src) {
-          triggerLogoutAndReset();
+        if (currentQrData) {
+          if (qrFrame) qrFrame.classList.remove('hidden');
+          if (qrImage) qrImage.src = currentQrData;
+          if (qrLoading) qrLoading.classList.add('hidden');
+        } else {
+          if (qrFrame) qrFrame.classList.add('hidden');
+          if (qrLoading) qrLoading.classList.remove('hidden');
+          fetchStatusFallback();
         }
       }
       safeCreateIcons();
@@ -279,9 +287,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      socket.on('keywords_updated', (kws) => {
-        if (kws) {
-          activeKeywords = kws;
+      socket.on('keywords_updated', (data) => {
+        if (data && data.keywords) {
+          const targetPhone = data.phone ? String(data.phone).replace(/\D/g, '') : '';
+          const myPhone = currentUser && currentUser.phone ? String(currentUser.phone).replace(/\D/g, '') : '';
+          if (!targetPhone || targetPhone === myPhone) {
+            activeKeywords = data.keywords;
+            renderKeywordTags();
+          }
+        } else if (data && (data.include || data.exclude)) {
+          activeKeywords = data;
           renderKeywordTags();
         }
         loadKeywordAlerts();
@@ -334,12 +349,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeKeywords = { include: [], exclude: [] };
 
-  // DOM Elements - 5 Main Page Views (Dashboard, WhatsApp, Matching, Keywords, Profile)
+  // DOM Elements - 6 Main Page Views (Dashboard, WhatsApp, Matching, Keywords, Profile, Plan Details)
   const pageViewDashboard = document.getElementById('pageViewDashboard');
   const pageViewWhatsApp = document.getElementById('pageViewWhatsApp');
   const pageViewMatching = document.getElementById('pageViewMatching');
   const pageViewKeywords = document.getElementById('pageViewKeywords');
   const pageViewProfile = document.getElementById('pageViewProfile');
+  const pageViewPlanDetails = document.getElementById('pageViewPlanDetails');
+
+  // DOM Elements - Plan Details Page Specific
+  const planDetailsBackBtn = document.getElementById('planDetailsBackBtn');
+  const planDetailsRefreshBtn = document.getElementById('planDetailsRefreshBtn');
+  const planDetailsStatusBadge = document.getElementById('planDetailsStatusBadge');
+  const planDetailsStatusBadgeText = document.getElementById('planDetailsStatusBadgeText');
+  const planDetailsDaysBadge = document.getElementById('planDetailsDaysBadge');
+  const planDetailsDaysRemaining = document.getElementById('planDetailsDaysRemaining');
+  const planDetailsTitle = document.getElementById('planDetailsTitle');
+  const planDetailsProgressPercent = document.getElementById('planDetailsProgressPercent');
+  const planDetailsProgressBar = document.getElementById('planDetailsProgressBar');
+  const planDetailsStartedAt = document.getElementById('planDetailsStartedAt');
+  const planDetailsExpiresAt = document.getElementById('planDetailsExpiresAt');
+  const planDetailsStatusText = document.getElementById('planDetailsStatusText');
+  const planDetailsPaymentId = document.getElementById('planDetailsPaymentId');
+  const planDetailsOrderId = document.getElementById('planDetailsOrderId');
+  const planDetailsPhone = document.getElementById('planDetailsPhone');
+  const copyPaymentIdBtn = document.getElementById('copyPaymentIdBtn');
+  const copyOrderIdBtn = document.getElementById('copyOrderIdBtn');
+  const planDetailsRenewBtn = document.getElementById('planDetailsRenewBtn');
+  const planDetailsRenewBtnText = document.getElementById('planDetailsRenewBtnText');
+  const planDetailsPaymentsBadgeCount = document.getElementById('planDetailsPaymentsBadgeCount');
+  const planDetailsPaymentsList = document.getElementById('planDetailsPaymentsList');
 
   // DOM Elements - Matching Page Specific
   const pageMatchingAlertsGrid = document.getElementById('pageMatchingAlertsGrid');
@@ -357,11 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMatchingSubTab = tab;
     if (matchingTabBtn && savedTabBtn) {
       if (tab === 'matching') {
-        matchingTabBtn.className = 'filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition flex items-center gap-1.5';
-        savedTabBtn.className = 'filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5';
+        matchingTabBtn.className = 'filter-chip active px-3.5 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer';
+        savedTabBtn.className = 'filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer';
       } else {
-        savedTabBtn.className = 'filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition flex items-center gap-1.5';
-        matchingTabBtn.className = 'filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5';
+        savedTabBtn.className = 'filter-chip active px-3.5 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer';
+        matchingTabBtn.className = 'filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer';
       }
     }
     renderKeywordAlerts(cachedAlertsData);
@@ -540,6 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (pageProfileUserGender) pageProfileUserGender.textContent = user.gender || 'Male';
 
+    const userSubtitle = document.getElementById('dashboardUserSubtitle');
+    if (userSubtitle) {
+      const p = (user.phone || '').replace(/\D/g, '');
+      userSubtitle.textContent = `Connected as ${user.name || 'User'} (+91 ${p.slice(-10)})`;
+    }
+
     if (pageProfileAvatar) {
       pageProfileAvatar.textContent = (user.name || 'U').charAt(0).toUpperCase();
     }
@@ -548,6 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (user.gender === 'Other') pageProfileGenderBadge.textContent = '🧑';
       else pageProfileGenderBadge.textContent = '👨';
     }
+    safeCreateIcons();
   }
 
   // Handle Gender Selection Pill Highlighting
@@ -570,60 +616,43 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initGenderPills();
 
-  // 1. Phone Form Submit Handler (Instant & Resilient)
+  // 1. Phone Form Submit Handler
   if (authPhoneForm) {
     authPhoneForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const rawPhone = authPhoneInput ? authPhoneInput.value.trim() : '';
-      const cleanPhone = rawPhone.replace(/\D/g, '') || '9345233351';
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      if (cleanPhone.length < 10) {
+        alert('Please enter a valid 10-digit mobile number.');
+        return;
+      }
 
       pendingAuthPhone = cleanPhone;
       if (authOtpDisplayPhone) authOtpDisplayPhone.textContent = `+91 ${cleanPhone.slice(-10)}`;
-      if (authOtpCodeValue) authOtpCodeValue.textContent = '1234';
 
       const origBtnHtml = authSendOtpBtn.innerHTML;
       authSendOtpBtn.disabled = true;
-      authSendOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Connecting...</span>`;
+      authSendOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Sending OTP...</span>`;
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
         const res = await apiFetch('/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: cleanPhone }),
-          signal: controller.signal
+          body: JSON.stringify({ phone: cleanPhone })
         });
-        clearTimeout(timeoutId);
         const data = await res.json();
-        if (data && data.otp && authOtpCodeValue) {
-          authOtpCodeValue.textContent = data.otp;
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to send OTP');
         }
+        showAuthStep('otp');
       } catch (err) {
-        console.warn('API send-otp timeout, using instant code 1234');
+        alert(err.message || 'Error sending OTP. Please check your network and try again.');
       } finally {
         authSendOtpBtn.disabled = false;
         authSendOtpBtn.innerHTML = origBtnHtml;
-        showAuthStep('otp');
         safeCreateIcons();
       }
-    });
-  }
-
-  // Quick Direct Dashboard Entry Button
-  const authQuickBypassBtn = document.getElementById('authQuickBypassBtn');
-  if (authQuickBypassBtn) {
-    authQuickBypassBtn.addEventListener('click', async () => {
-      const user = { phone: '9345233351', name: 'Kart', gender: 'Male' };
-      setStoredUser(user, 'auth_token_direct');
-      hideAuthModal();
-      await fetchSubscriptionStatus();
-      switchTab('dashboard');
-      loadStats();
-      loadThreads();
-      loadKeywords();
-      loadKeywordAlerts();
-      updateDesktopNotifUI();
     });
   }
 
@@ -637,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. Resend OTP Button
   if (authResendOtpBtn) {
     authResendOtpBtn.addEventListener('click', async () => {
-      if (!pendingAuthPhone) pendingAuthPhone = '9345233351';
+      if (!pendingAuthPhone) return;
       authResendOtpBtn.textContent = 'Resending...';
       try {
         const res = await apiFetch('/api/auth/send-otp', {
@@ -646,55 +675,62 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ phone: pendingAuthPhone })
         });
         const data = await res.json();
-        if (data && data.otp && authOtpCodeValue) authOtpCodeValue.textContent = data.otp;
-        authResendOtpBtn.textContent = 'Code: 1234 (Ready)';
+        if (res.ok && data.success) {
+          authResendOtpBtn.textContent = 'OTP Sent!';
+        } else {
+          authResendOtpBtn.textContent = 'Failed to resend';
+        }
         setTimeout(() => { authResendOtpBtn.textContent = "Didn't receive code? Resend OTP"; }, 3000);
       } catch (e) {
-        authResendOtpBtn.textContent = "Code: 1234 (Ready)";
+        authResendOtpBtn.textContent = "Didn't receive code? Resend OTP";
       }
     });
   }
 
-  // 4. OTP Form Submit Handler (Instant & Resilient)
+  // 4. OTP Form Submit Handler
   if (authOtpForm) {
     authOtpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const otp = authOtpInput.value.trim() || '1234';
+      const otp = authOtpInput.value.trim();
+
+      if (!otp) {
+        alert('Please enter the OTP code.');
+        return;
+      }
 
       const origBtnHtml = authVerifyOtpBtn.innerHTML;
       authVerifyOtpBtn.disabled = true;
       authVerifyOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Verifying...</span>`;
 
-      let userObj = { phone: pendingAuthPhone || '9345233351', name: 'Kart', gender: 'Male' };
-
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
         const res = await apiFetch('/api/auth/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone || '9345233351', otp }),
-          signal: controller.signal
+          body: JSON.stringify({ phone: pendingAuthPhone, otp })
         });
-        clearTimeout(timeoutId);
         const data = await res.json();
-        if (data && data.user) {
-          userObj = data.user;
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Invalid OTP code. Please try again.');
+        }
+
+        if (data.isNewUser) {
+          showAuthStep('profile');
+        } else if (data.user) {
+          setStoredUser(data.user, data.token);
+          hideAuthModal();
+          await fetchSubscriptionStatus();
+          switchTab('dashboard');
+          loadStats();
+          loadThreads();
+          loadKeywords();
+          loadKeywordAlerts();
+          updateDesktopNotifUI();
         }
       } catch (err) {
-        console.warn('Verify API timeout, logging in with saved profile');
+        alert(err.message || 'Verification failed. Please enter the correct OTP.');
       } finally {
         authVerifyOtpBtn.disabled = false;
         authVerifyOtpBtn.innerHTML = origBtnHtml;
-        setStoredUser(userObj, 'auth_token_verified');
-        hideAuthModal();
-        await fetchSubscriptionStatus();
-        switchTab('dashboard');
-        loadStats();
-        loadThreads();
-        loadKeywords();
-        loadKeywordAlerts();
-        updateDesktopNotifUI();
         safeCreateIcons();
       }
     });
@@ -781,11 +817,21 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       if (!currentUser) return;
 
-      const name = editProfileNameInput.value.trim();
+      const name = editProfileNameInput ? editProfileNameInput.value.trim() : '';
       const selectedRadio = document.querySelector('input[name="editGender"]:checked');
       const gender = selectedRadio ? selectedRadio.value : (currentUser.gender || 'Male');
 
-      if (!name) return;
+      if (!name) {
+        alert('Please enter a username or full name.');
+        return;
+      }
+
+      const submitBtn = editProfileForm.querySelector('button[type="submit"]');
+      const origHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Saving...</span>`;
+      }
 
       try {
         const res = await apiFetch('/api/auth/update-profile', {
@@ -796,10 +842,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (data.success && data.user) {
           setStoredUser(data.user);
-          closeEditProfileModal();
+        } else {
+          // Fallback update local user state
+          currentUser.name = name;
+          currentUser.gender = gender;
+          setStoredUser(currentUser);
         }
+        closeEditProfileModal();
+        alert('✅ Profile updated successfully!');
       } catch (err) {
-        alert('Failed to update profile.');
+        console.error('Update profile error:', err);
+        currentUser.name = name;
+        currentUser.gender = gender;
+        setStoredUser(currentUser);
+        closeEditProfileModal();
+        alert('✅ Profile updated!');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origHtml;
+          safeCreateIcons();
+        }
       }
     });
   }
@@ -857,13 +920,13 @@ document.addEventListener('DOMContentLoaded', () => {
     bottomNavBtns.forEach(btn => {
       const tab = btn.getAttribute('data-tab');
       if (tab === tabName) {
-        btn.className = 'bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1.5 text-xs font-bold transition text-emerald-600 dark:text-emerald-400';
+        btn.className = 'bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1.5 text-xs font-semibold transition text-blue-600 dark:text-blue-400';
       } else {
-        btn.className = 'bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1.5 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600';
+        btn.className = 'bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1.5 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-blue-600';
       }
     });
 
-    [pageViewDashboard, pageViewWhatsApp, pageViewMatching, pageViewKeywords, pageViewProfile].forEach(page => {
+    [pageViewDashboard, pageViewWhatsApp, pageViewMatching, pageViewKeywords, pageViewProfile, pageViewPlanDetails].forEach(page => {
       if (page) page.classList.add('hidden');
     });
 
@@ -884,6 +947,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDashboardPayments();
     } else if (tabName === 'whatsapp') {
       if (pageViewWhatsApp) pageViewWhatsApp.classList.remove('hidden');
+      if (!isConnected) {
+        showQrModal();
+      }
       const chatSidebar = document.getElementById('chatSidebar');
       const chatMainArea = document.getElementById('chatMainArea');
       if (!activeChatJid && chatSidebar && chatMainArea) {
@@ -901,6 +967,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (tabName === 'profile') {
       if (pageViewProfile) pageViewProfile.classList.remove('hidden');
       updateProfilePageData();
+    } else if (tabName === 'plan_details') {
+      if (pageViewPlanDetails) pageViewPlanDetails.classList.remove('hidden');
+      fetchSubscriptionStatus().then(() => {
+        renderPlanDetailsPage();
+      });
+      renderPlanDetailsPage();
     }
     safeCreateIcons();
   }
@@ -1797,12 +1869,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const { status, qr, user, serverIp } = data;
     console.log('📡 WhatsApp status update received:', status, qr ? 'QR available' : 'No QR');
 
+    if (qr) {
+      currentQrData = qr;
+    }
+
     if (qrServerUrlInput && serverIp && serverIp !== 'localhost' && !qrServerUrlInput.value.includes(serverIp)) {
       qrServerUrlInput.placeholder = `http://${serverIp}:3000`;
     }
 
     if (status === 'connected' || user) {
       isConnected = true;
+      currentQrData = null;
       if (statusText) statusText.textContent = 'Connected';
       if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
 
@@ -1826,23 +1903,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loadStats();
         loadThreads();
       }
-    } else if (qr) {
+    } else if (qr || currentQrData) {
       isConnected = false;
+      const qrToShow = qr || currentQrData;
       if (statusText) statusText.textContent = 'Scan QR Code';
       if (statusBadge) {
         statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow animate-pulse"><i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Link WhatsApp</button>`;
       }
 
       if (qrFrame) qrFrame.classList.remove('hidden');
-      if (qrImage) qrImage.src = qr;
+      if (qrImage) qrImage.src = qrToShow;
       if (qrLoading) qrLoading.classList.add('hidden');
-
-      // Only auto-open QR modal if user has active subscription
-      if (currentUser && qrModal && isConnected === false && userSubscription && userSubscription.is_subscribed) {
-        qrModal.classList.remove('hidden');
-        if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
-        if (qrContainer) qrContainer.classList.remove('hidden');
-      }
 
       if (logoutBtn) logoutBtn.classList.add('hidden');
     } else if (status === 'connecting') {
@@ -3037,7 +3108,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const paywallModal = document.getElementById('paywallModal');
   const paywallPayWithRazorpayBtn = document.getElementById('paywallPayWithRazorpayBtn');
-  const paywallTestBypassBtn = document.getElementById('paywallTestBypassBtn');
   const closePaywallModalBtn = document.getElementById('closePaywallModalBtn');
 
   if (closePaywallModalBtn) {
@@ -3106,10 +3176,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dashboardPlanBadge) {
       if (isSub) {
-        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-emerald-500 text-white shadow-md shadow-emerald-500/30';
+        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-blue-600 text-white shadow-md shadow-blue-600/30';
         if (dashboardPlanBadgeText) dashboardPlanBadgeText.textContent = 'PRO MEMBER ACTIVE';
       } else {
-        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-rose-500 text-white shadow-md shadow-rose-500/30';
+        dashboardPlanBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-slate-700 text-slate-300 shadow-md';
         if (dashboardPlanBadgeText) dashboardPlanBadgeText.textContent = 'INACTIVE / EXPIRED';
       }
     }
@@ -3151,12 +3221,140 @@ document.addEventListener('DOMContentLoaded', () => {
       dashboardStatWA.textContent = isConnected ? 'Connected' : 'Disconnected';
       if (dashboardStatWADesc) {
         dashboardStatWADesc.innerHTML = isConnected
-          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${waAccountName || 'Live Monitoring'}`
+          ? `<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ${waAccountName || 'Live Monitoring'}`
           : `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Link Device`;
       }
     }
 
     safeCreateIcons();
+  }
+
+  function renderPlanDetailsPage() {
+    const isSub = userSubscription && userSubscription.is_subscribed;
+    const daysLeft = isSub ? (userSubscription.days_left || 0) : 0;
+    const startedAt = (userSubscription && userSubscription.started_at) ? userSubscription.started_at : 0;
+    const expiresAt = (userSubscription && userSubscription.expires_at) ? userSubscription.expires_at : 0;
+
+    if (planDetailsStatusBadge) {
+      if (isSub) {
+        planDetailsStatusBadge.className = 'inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold tracking-wide uppercase bg-blue-600 text-white shadow-md shadow-blue-600/30';
+        if (planDetailsStatusBadgeText) planDetailsStatusBadgeText.textContent = 'PRO MEMBER ACTIVE';
+      } else {
+        planDetailsStatusBadge.className = 'inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold tracking-wide uppercase bg-slate-700 text-slate-300 shadow-md';
+        if (planDetailsStatusBadgeText) planDetailsStatusBadgeText.textContent = 'INACTIVE / EXPIRED';
+      }
+    }
+
+    if (planDetailsDaysRemaining) {
+      planDetailsDaysRemaining.textContent = daysLeft;
+    }
+
+    if (planDetailsStartedAt) {
+      if (startedAt > 0) {
+        const d = new Date(startedAt * 1000);
+        planDetailsStartedAt.textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      } else {
+        planDetailsStartedAt.textContent = isSub ? 'Current Period' : '-';
+      }
+    }
+
+    if (planDetailsExpiresAt) {
+      if (expiresAt > 0) {
+        const d = new Date(expiresAt * 1000);
+        planDetailsExpiresAt.textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      } else {
+        planDetailsExpiresAt.textContent = isSub ? 'Active' : 'Expired / Inactive';
+      }
+    }
+
+    if (planDetailsStatusText) {
+      planDetailsStatusText.textContent = isSub ? 'Active Pro' : 'Inactive';
+      planDetailsStatusText.className = isSub ? 'text-xs font-semibold text-blue-400' : 'text-xs font-semibold text-slate-400';
+    }
+
+    if (planDetailsPaymentId) {
+      planDetailsPaymentId.textContent = (userSubscription && userSubscription.payment_id) ? userSubscription.payment_id : (isSub ? 'Manual / Direct' : '-');
+    }
+
+    if (planDetailsOrderId) {
+      planDetailsOrderId.textContent = (userSubscription && userSubscription.order_id) ? userSubscription.order_id : '-';
+    }
+
+    if (planDetailsPhone) {
+      planDetailsPhone.textContent = currentUser && currentUser.phone ? `+91 ${currentUser.phone.slice(-10)}` : '-';
+    }
+
+    if (planDetailsProgressBar) {
+      const pct = isSub ? Math.min(100, Math.max(5, Math.round((daysLeft / 30) * 100))) : 0;
+      planDetailsProgressBar.style.width = `${pct}%`;
+      if (planDetailsProgressPercent) {
+        planDetailsProgressPercent.textContent = isSub ? `${daysLeft} Days Remaining (${pct}%)` : 'Subscription Inactive';
+      }
+    }
+
+    if (planDetailsRenewBtnText) {
+      planDetailsRenewBtnText.textContent = isSub ? 'Renew & Extend (+30 Days)' : 'Subscribe Plan Now (₹49/mo)';
+    }
+
+    renderPlanDetailsPayments();
+    safeCreateIcons();
+  }
+
+  async function renderPlanDetailsPayments() {
+    if (!planDetailsPaymentsList || !currentUser || !currentUser.phone) return;
+    try {
+      const res = await apiFetch(`/api/subscription/payments?phone=${encodeURIComponent(currentUser.phone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const payments = data.payments || [];
+        
+        if (planDetailsPaymentsBadgeCount) {
+          planDetailsPaymentsBadgeCount.textContent = `${payments.length} Records`;
+        }
+
+        if (payments.length === 0) {
+          planDetailsPaymentsList.innerHTML = `
+            <div class="text-center py-10 text-slate-400 text-xs space-y-2">
+              <i data-lucide="receipt" class="w-8 h-8 mx-auto opacity-40 text-slate-400"></i>
+              <p class="font-medium text-slate-600 dark:text-slate-300">No Payment History Yet</p>
+              <p class="text-[11px] text-slate-400">Complete your first ₹49 subscription via Razorpay to view your invoices here.</p>
+            </div>
+          `;
+        } else {
+          planDetailsPaymentsList.innerHTML = payments.map(p => {
+            const dateStr = new Date(p.created_at * 1000).toLocaleDateString('en-IN', {
+              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            const amtInRupees = (p.amount / 100).toFixed(0);
+            const isSuccess = p.status === 'captured';
+            return `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs gap-3 shadow-xs hover:border-blue-500/40 transition">
+                <div class="space-y-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-900 dark:text-white text-sm">30-Day Pro Subscription</span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isSuccess ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300' : 'bg-amber-100 text-amber-800'}">${p.status.toUpperCase()}</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
+                    <span>Payment ID: ${p.payment_id || '-'}</span>
+                    <span>•</span>
+                    <span>${dateStr}</span>
+                    <span>•</span>
+                    <span class="capitalize">${p.method || 'UPI/Card'}</span>
+                  </p>
+                </div>
+                <div class="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-700/50">
+                  <span class="font-mono font-bold text-base text-blue-600 dark:text-blue-400">₹${amtInRupees}</span>
+                  <span class="text-[10px] font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Paid</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+        safeCreateIcons();
+      }
+    } catch (e) {
+      console.warn('renderPlanDetailsPayments error:', e);
+    }
   }
 
   async function renderDashboardPayments() {
@@ -3185,11 +3383,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="space-y-0.5 min-w-0">
                   <div class="flex items-center gap-1.5">
                     <span class="font-bold text-slate-800 dark:text-white">Pro Monthly Pass</span>
-                    <span class="px-2 py-0.2 rounded-full text-[10px] font-bold ${isSuccess ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'}">${p.status.toUpperCase()}</span>
+                    <span class="px-2 py-0.2 rounded-full text-[10px] font-bold ${isSuccess ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300' : 'bg-amber-100 text-amber-800'}">${p.status.toUpperCase()}</span>
                   </div>
                   <p class="text-[10px] text-slate-400 font-mono">${p.payment_id || p.order_id} • ${dateStr}</p>
                 </div>
-                <span class="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 flex-shrink-0">₹${amtInRupees}</span>
+                <span class="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 flex-shrink-0">₹${amtInRupees}</span>
               </div>
             `;
           }).join('');
@@ -3228,10 +3426,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const key = data.key_id || razorpayKeyId;
 
       if (typeof Razorpay === 'undefined') {
-        const confirmTest = confirm('Razorpay SDK is connecting in sandbox test mode. Activate 30-Day Pro Subscription now?');
-        if (confirmTest) {
-          await activateTestSubscription();
-        }
+        alert('Razorpay Checkout SDK is still loading. Please check your internet connection and try again.');
         return;
       }
 
@@ -3248,7 +3443,7 @@ document.addEventListener('DOMContentLoaded', () => {
           contact: currentUser.phone ? `+91${currentUser.phone.slice(-10)}` : ''
         },
         theme: {
-          color: '#059669'
+          color: '#2563eb'
         },
         modal: {
           ondismiss: function() {
@@ -3264,7 +3459,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 phone: currentUser.phone,
                 razorpay_order_id: response.razorpay_order_id || data.order.id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature || 'verified'
+                razorpay_signature: response.razorpay_signature
               })
             });
             const verifyData = await verifyRes.json();
@@ -3273,13 +3468,14 @@ document.addEventListener('DOMContentLoaded', () => {
               enforceSubscriptionAccess();
               renderDashboardSubscription();
               renderDashboardPayments();
+              renderPlanDetailsPage();
               alert('🎉 Payment Successful! Your 30-Day Pro Subscription is active.');
             } else {
               alert(`Payment verification error: ${verifyData.error}`);
             }
           } catch (e) {
             console.error('Payment verify error:', e);
-            alert('Payment received. Verifying subscription...');
+            alert('Payment received. Verifying subscription status...');
             await fetchSubscriptionStatus();
           }
         }
@@ -3287,16 +3483,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const rzpInstance = new Razorpay(options);
       rzpInstance.on('payment.failed', function (response) {
-        alert(`Payment failed: ${response.error.description || 'Transaction cancelled'}`);
+        alert(`Payment failed: ${response.error?.description || 'Transaction was not completed'}`);
       });
       rzpInstance.open();
 
     } catch (err) {
       console.error('Razorpay checkout error:', err);
-      const doTest = confirm(`Could not open Razorpay checkout (${err.message}). Activate instant 30-Day Pro test subscription?`);
-      if (doTest) {
-        await activateTestSubscription();
-      }
+      alert(err.message || 'Could not open Razorpay checkout. Please verify Razorpay API Keys in server config.');
     } finally {
       if (payBtn) {
         payBtn.disabled = false;
@@ -3306,33 +3499,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function activateTestSubscription() {
-    if (!currentUser || !currentUser.phone) return;
-    try {
-      const res = await apiFetch('/api/subscription/activate-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: currentUser.phone })
-      });
-      const data = await res.json();
-      if (data.success && data.subscription) {
-        userSubscription = data.subscription;
-        enforceSubscriptionAccess();
-        renderDashboardSubscription();
-        renderDashboardPayments();
-        alert('✨ Pro Subscription activated for 30 days!');
-      }
-    } catch (e) {
-      console.error('Test subscription error:', e);
-    }
+  // Dashboard & Plan Details Event Listeners
+  const dashboardSubCard = document.getElementById('dashboardSubCard');
+  if (dashboardSubCard) {
+    dashboardSubCard.addEventListener('click', (e) => {
+      if (e.target.closest('#dashboardPayNowBtn')) return;
+      switchTab('plan_details');
+    });
   }
 
-  // Dashboard Button Event Listeners
+  if (planDetailsBackBtn) {
+    planDetailsBackBtn.addEventListener('click', () => {
+      switchTab('dashboard');
+    });
+  }
+
+  if (planDetailsRefreshBtn) {
+    planDetailsRefreshBtn.addEventListener('click', async () => {
+      await fetchSubscriptionStatus();
+      renderPlanDetailsPage();
+    });
+  }
+
+  if (planDetailsRenewBtn) {
+    planDetailsRenewBtn.addEventListener('click', () => {
+      launchRazorpayCheckout(49);
+    });
+  }
+
+  if (copyPaymentIdBtn) {
+    copyPaymentIdBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (planDetailsPaymentId && planDetailsPaymentId.textContent && planDetailsPaymentId.textContent !== '-') {
+        navigator.clipboard.writeText(planDetailsPaymentId.textContent.trim());
+        copyPaymentIdBtn.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-blue-400"></i>`;
+        safeCreateIcons();
+        setTimeout(() => {
+          copyPaymentIdBtn.innerHTML = `<i data-lucide="copy" class="w-3 h-3"></i>`;
+          safeCreateIcons();
+        }, 1500);
+      }
+    });
+  }
+
+  if (copyOrderIdBtn) {
+    copyOrderIdBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (planDetailsOrderId && planDetailsOrderId.textContent && planDetailsOrderId.textContent !== '-') {
+        navigator.clipboard.writeText(planDetailsOrderId.textContent.trim());
+        copyOrderIdBtn.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-blue-400"></i>`;
+        safeCreateIcons();
+        setTimeout(() => {
+          copyOrderIdBtn.innerHTML = `<i data-lucide="copy" class="w-3 h-3"></i>`;
+          safeCreateIcons();
+        }, 1500);
+      }
+    });
+  }
+
   if (dashboardPayNowBtn) {
     dashboardPayNowBtn.addEventListener('click', () => launchRazorpayCheckout(49));
-  }
-  if (dashboardTestBypassBtn) {
-    dashboardTestBypassBtn.addEventListener('click', activateTestSubscription);
   }
   if (dashboardRefreshBtn) {
     dashboardRefreshBtn.addEventListener('click', () => {
@@ -3352,7 +3578,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dashboardStatWA) {
     const parentCard = dashboardStatWA.closest('.p-4');
     if (parentCard) {
-      parentCard.classList.add('cursor-pointer', 'hover:border-emerald-500/50', 'transition');
+      parentCard.classList.add('cursor-pointer', 'hover:border-red-500/50', 'transition');
       parentCard.addEventListener('click', () => {
         showQrModal();
       });
@@ -3360,9 +3586,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (paywallPayWithRazorpayBtn) {
     paywallPayWithRazorpayBtn.addEventListener('click', () => launchRazorpayCheckout(49));
-  }
-  if (paywallTestBypassBtn) {
-    paywallTestBypassBtn.addEventListener('click', activateTestSubscription);
   }
 
   // Initial Auth & Data Load

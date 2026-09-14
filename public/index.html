@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     if (typeof tailwind !== 'undefined') {
@@ -20,13 +20,29 @@
         darkMode: 'class',
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            },
             colors: {
+              brand: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
+                950: '#172554',
+              },
               'wa-dark': '#0b141a',
               'wa-card': '#111b21',
               'wa-header': '#202c33',
-              'wa-accent': '#00a884',
-              'wa-teal': '#128c7e',
-              'wa-light': '#25d366',
+              'wa-accent': '#2563eb',
+              'wa-teal': '#1d4ed8',
+              'wa-light': '#3b82f6',
               'wa-border': '#222d34'
             }
           }
@@ -48,64 +64,54 @@
       
       <!-- Brand Logo Header -->
       <div class="text-center space-y-2">
-        <div class="inline-flex p-3.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/20 shadow-sm">
-          <i data-lucide="shield-check" class="w-8 h-8"></i>
+        <div class="inline-flex p-3.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-500/20 shadow-sm">
+          <i data-lucide="compass" class="w-8 h-8"></i>
         </div>
-        <h2 id="authModalTitle" class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Go-Notch Trip Monitor</h2>
+        <h2 id="authModalTitle" class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Go-Notch Trip Monitor</h2>
         <p id="authModalSubtitle" class="text-slate-500 dark:text-slate-400 text-xs">Login with your mobile number to access real-time WhatsApp trips</p>
       </div>
 
       <!-- STEP 1: MOBILE NUMBER INPUT -->
       <form id="authPhoneForm" class="space-y-4">
         <div class="space-y-1.5 text-left">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number</label>
-          <div class="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 overflow-hidden focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition">
-            <span class="inline-flex items-center px-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs border-r border-slate-200 dark:border-slate-700 select-none">
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Mobile Number</label>
+          <div class="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition">
+            <span class="inline-flex items-center px-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs border-r border-slate-200 dark:border-slate-700 select-none">
               🇮🇳 +91
             </span>
-            <input type="tel" id="authPhoneInput" maxlength="10" placeholder="Enter 10-digit mobile number" class="w-full bg-transparent px-3.5 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" autofocus required>
+            <input type="tel" id="authPhoneInput" maxlength="10" placeholder="Enter 10-digit mobile number" class="w-full bg-transparent px-3.5 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" autofocus required>
           </div>
           <p class="text-[11px] text-slate-400">If you are new, we will guide you through profile setup after verification.</p>
         </div>
 
-        <button type="submit" id="authSendOtpBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+        <button type="submit" id="authSendOtpBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
           <span>Get Verification Code</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </button>
-
-        <button type="button" id="authQuickBypassBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95">
-          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i>
-          <span>Direct Dashboard Entry (Instant)</span>
         </button>
       </form>
 
       <!-- STEP 2: OTP VERIFICATION -->
       <form id="authOtpForm" class="hidden space-y-4 text-left">
-        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs">
-          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium">
-            <i data-lucide="smartphone" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+        <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
+            <i data-lucide="smartphone" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
             <span>Sent to <strong id="authOtpDisplayPhone">+91 XXXXXXXXXX</strong></span>
           </div>
-          <button type="button" id="authChangePhoneBtn" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">Change</button>
-        </div>
-
-        <!-- Helpful Quick Test OTP Badge -->
-        <div id="authOtpCodeHint" class="p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/20 rounded-xl text-center">
-          <p class="text-xs text-blue-700 dark:text-blue-300">Your OTP code is: <strong id="authOtpCodeValue" class="text-sm font-mono tracking-widest text-blue-800 dark:text-blue-200">1234</strong> (or use 1234)</p>
+          <button type="button" id="authChangePhoneBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Change</button>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Enter 4-Digit OTP</label>
-          <input type="text" id="authOtpInput" maxlength="6" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center text-xl font-bold tracking-[0.4em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition" required>
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Enter 4-Digit OTP</label>
+          <input type="text" id="authOtpInput" maxlength="6" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center text-xl font-semibold tracking-[0.4em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
         </div>
 
-        <button type="submit" id="authVerifyOtpBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+        <button type="submit" id="authVerifyOtpBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
           <span>Verify & Continue</span>
           <i data-lucide="check" class="w-4 h-4"></i>
         </button>
 
         <div class="text-center pt-1">
-          <button type="button" id="authResendOtpBtn" class="text-xs font-semibold text-slate-500 hover:text-emerald-600 dark:text-slate-400 transition">
+          <button type="button" id="authResendOtpBtn" class="text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 transition">
             Didn't receive code? Resend OTP
           </button>
         </div>
@@ -119,35 +125,35 @@
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Full Name / Username</label>
-          <div class="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition">
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Full Name / Username</label>
+          <div class="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition">
             <i data-lucide="user" class="w-4 h-4 text-slate-400 mr-2.5"></i>
-            <input type="text" id="authProfileNameInput" placeholder="e.g. John Doe / Captain Alex" class="w-full bg-transparent text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" required>
+            <input type="text" id="authProfileNameInput" placeholder="e.g. John Doe / Captain Alex" class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" required>
           </div>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Gender</label>
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Gender</label>
           <div class="grid grid-cols-3 gap-2">
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
               <input type="radio" name="authGender" value="Male" checked class="hidden gender-radio">
               <i data-lucide="user-check" class="w-5 h-5 text-slate-500 mb-1"></i>
-              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Male</span>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Male</span>
             </label>
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
               <input type="radio" name="authGender" value="Female" class="hidden gender-radio">
               <i data-lucide="heart" class="w-5 h-5 text-slate-500 mb-1"></i>
-              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Female</span>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Female</span>
             </label>
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-emerald-500 transition text-center select-none">
+            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
               <input type="radio" name="authGender" value="Other" class="hidden gender-radio">
               <i data-lucide="users" class="w-5 h-5 text-slate-500 mb-1"></i>
-              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Other</span>
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Other</span>
             </label>
           </div>
         </div>
 
-        <button type="submit" id="authCompleteProfileBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+        <button type="submit" id="authCompleteProfileBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
           <span>Complete & Enter App</span>
           <i data-lucide="check-circle" class="w-4 h-4"></i>
         </button>
@@ -159,38 +165,38 @@
   <!-- Edit Profile Modal -->
   <div id="editProfileModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
-      <button id="closeEditProfileModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+      <button id="closeEditProfileModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
       <div class="text-left space-y-1">
-        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Edit Profile Details</h3>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Edit Profile Details</h3>
         <p class="text-xs text-slate-400">Update your username or gender preferences</p>
       </div>
 
       <form id="editProfileForm" class="space-y-4 text-left">
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile Number (Read-only)</label>
-          <input type="text" id="editProfilePhone" disabled class="w-full bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-500 font-semibold cursor-not-allowed">
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Mobile Number (Read-only)</label>
+          <input type="text" id="editProfilePhone" disabled class="w-full bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-500 font-medium cursor-not-allowed">
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Username / Full Name</label>
-          <input type="text" id="editProfileNameInput" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-emerald-500" required>
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Username / Full Name</label>
+          <input type="text" id="editProfileNameInput" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500" required>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Gender</label>
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Gender</label>
           <div class="grid grid-cols-3 gap-2">
-            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
               <input type="radio" name="editGender" value="Male" class="hidden">
               <span>Male</span>
             </label>
-            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
               <input type="radio" name="editGender" value="Female" class="hidden">
               <span>Female</span>
             </label>
-            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+            <label class="edit-gender-pill flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
               <input type="radio" name="editGender" value="Other" class="hidden">
               <span>Other</span>
             </label>
@@ -198,8 +204,8 @@
         </div>
 
         <div class="flex gap-2 pt-2">
-          <button type="button" id="cancelEditProfileBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition">Cancel</button>
-          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition">Save Changes</button>
+          <button type="button" id="cancelEditProfileBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-medium transition cursor-pointer">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer">Save Changes</button>
         </div>
       </form>
     </div>
@@ -208,31 +214,31 @@
   <!-- QR Code Scan Modal -->
   <div id="qrModal" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-lg z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative">
-      <button id="closeQrModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Close">
+      <button id="closeQrModalBtn" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer" title="Close">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
       <div class="text-center space-y-2">
-        <div class="inline-flex p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-200 dark:border-emerald-500/20 mb-1">
+        <div class="inline-flex p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-200 dark:border-blue-500/20 mb-1">
           <i data-lucide="qr-code" class="w-8 h-8"></i>
         </div>
         <h2 class="text-xl font-bold text-slate-900 dark:text-white">Connect WhatsApp Account</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-xs">
+        <p class="text-slate-500 dark:text-slate-400 text-xs font-normal">
           Scan this QR code with WhatsApp on your phone (Linked Devices) to load all your real chats and contacts.
         </p>
       </div>
 
       <!-- Already Connected Account Banner -->
-      <div id="alreadyConnectedBanner" class="hidden p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl text-center space-y-3">
-        <div class="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+      <div id="alreadyConnectedBanner" class="hidden p-4 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/30 rounded-2xl text-center space-y-3">
+        <div class="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-sm">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>
           <span>Account Connected</span>
         </div>
-        <p class="text-xs text-slate-600 dark:text-slate-300">Connected as <strong id="connectedUserName" class="text-slate-900 dark:text-white">WhatsApp Account</strong></p>
+        <p class="text-xs text-slate-600 dark:text-slate-300">Connected as <strong id="connectedUserName" class="text-slate-900 dark:text-white font-semibold">WhatsApp Account</strong></p>
         <div class="flex items-center gap-2 pt-1">
-          <button id="qrContinueBtn" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow">
+          <button id="qrContinueBtn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition shadow cursor-pointer">
             Open WhatsApp App
           </button>
-          <button id="qrLogoutBtn" class="py-2 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow">
+          <button id="qrLogoutBtn" class="py-2 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition shadow cursor-pointer">
             Scan New QR
           </button>
         </div>
@@ -240,27 +246,27 @@
 
       <div id="qrContainer" class="flex flex-col items-center justify-center min-h-[240px] bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700/60 relative">
         <div id="qrLoading" class="flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400 text-center">
-          <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <span class="text-xs font-medium">Generating WhatsApp QR Code...</span>
-          <button id="forceGenerateQrBtn" class="mt-2 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+          <button id="forceGenerateQrBtn" class="mt-2 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer">
             <i data-lucide="refresh-cw" class="w-3 h-3"></i>
             Reset & Generate Fresh QR
           </button>
         </div>
 
         <div id="qrFrame" class="hidden flex flex-col items-center">
-          <div class="p-3 bg-white rounded-xl shadow-xl border-4 border-emerald-500/30">
+          <div class="p-3 bg-white rounded-xl shadow-xl border-4 border-blue-500/30">
             <img id="qrImage" class="w-48 h-48 object-contain" alt="WhatsApp QR Code">
           </div>
-          <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-emerald-500"></i>
+          <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5 font-medium">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-blue-500"></i>
             Point your WhatsApp camera to scan
           </p>
         </div>
       </div>
 
       <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
-        <p class="font-semibold text-slate-900 dark:text-white">Steps to connect:</p>
+        <p class="font-medium text-slate-900 dark:text-white">Steps to connect:</p>
         <ol class="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400 text-[11px]">
           <li>Open WhatsApp on your mobile phone</li>
           <li>Tap <strong>Settings</strong> or <strong>Menu</strong> & select <strong>Linked Devices</strong></li>
@@ -270,19 +276,19 @@
 
       <!-- Collapsible Advanced Server Settings -->
       <div class="pt-1 text-center">
-        <button id="toggleAdvancedServerBtn" class="text-[11px] font-semibold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1 mx-auto">
+        <button id="toggleAdvancedServerBtn" class="text-[11px] font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1 mx-auto cursor-pointer">
           <i data-lucide="settings" class="w-3.5 h-3.5"></i>
           <span>Advanced Server Connection</span>
         </button>
 
         <div id="advancedServerBox" class="hidden mt-3 p-3 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-2 text-left">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="font-bold text-slate-700 dark:text-slate-300">Server Host Address:</span>
-            <span id="qrServerStatus" class="font-bold text-amber-500">Connecting...</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">Server Host Address:</span>
+            <span id="qrServerStatus" class="font-semibold text-amber-500">Connecting...</span>
           </div>
           <div class="flex gap-2">
             <input type="text" id="qrServerUrlInput" placeholder="http://192.0.0.2:3000" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
-            <button id="qrConnectServerBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow flex-shrink-0">
+            <button id="qrConnectServerBtn" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition shadow flex-shrink-0 cursor-pointer">
               Connect
             </button>
           </div>
@@ -296,21 +302,21 @@
   <div id="mainAppWrapper" class="hidden flex-1 flex w-full max-w-[1700px] mx-auto overflow-hidden shadow-2xl border-x border-slate-200 dark:border-slate-800 relative">
 
     <!-- Top Sticky Notification Permission Prompt Banner -->
-    <div id="notifPromptBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] bg-emerald-600 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-emerald-400/80 flex items-center justify-between gap-3 transition-all">
+    <div id="notifPromptBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] bg-blue-600 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-blue-400/80 flex items-center justify-between gap-3 transition-all">
       <div class="flex items-center gap-2.5 min-w-0">
         <div class="p-2 bg-white/20 rounded-xl flex-shrink-0">
           <i data-lucide="bell-ring" class="w-5 h-5 text-white animate-bounce"></i>
         </div>
         <div class="min-w-0 text-left">
-          <p class="text-xs font-bold leading-tight">Enable Match Alerts</p>
-          <p class="text-[11px] text-emerald-100 truncate">Get audio sounds & popup cards when trips match</p>
+          <p class="text-xs font-semibold leading-tight">Enable Match Alerts</p>
+          <p class="text-[11px] text-blue-100 truncate">Get audio sounds & popup cards when trips match</p>
         </div>
       </div>
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button id="bannerAllowNotifBtn" class="px-3.5 py-1.5 bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-extrabold rounded-xl transition shadow active:scale-95">
+        <button id="bannerAllowNotifBtn" class="px-3.5 py-1.5 bg-white text-blue-800 hover:bg-blue-50 text-xs font-bold rounded-xl transition shadow active:scale-95 cursor-pointer">
           Allow Now
         </button>
-        <button id="bannerDismissNotifBtn" class="p-1.5 text-emerald-200 hover:text-white rounded-lg transition" title="Dismiss">
+        <button id="bannerDismissNotifBtn" class="p-1.5 text-blue-200 hover:text-white rounded-lg transition cursor-pointer" title="Dismiss">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
@@ -322,72 +328,75 @@
       <!-- Top iOS Header: Dashboard Title & User Info -->
       <div class="pt-4 pb-3 px-4 sm:px-6 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
-          <p id="dashboardUserSubtitle" class="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Welcome back to Go-Notch Trip Monitor</p>
+          <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
+          <p id="dashboardUserSubtitle" class="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">Welcome back to Go-Notch Trip Monitor</p>
         </div>
         
         <div class="flex items-center gap-2">
-          <button id="dashboardRefreshBtn" title="Refresh Dashboard" class="p-2 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <button id="dashboardRefreshBtn" title="Refresh Dashboard" class="p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
             <i data-lucide="rotate-cw" class="w-5 h-5"></i>
           </button>
         </div>
       </div>
 
       <!-- Dashboard Scrollable Body -->
-      <div class="p-4 sm:p-6 space-y-5 max-w-4xl mx-auto w-full flex-1">
+      <div class="p-4 sm:p-6 pb-28 space-y-5 max-w-4xl mx-auto w-full flex-1">
 
         <!-- 1. HERO SUBSCRIPTION STATUS CARD (₹49 / Month Pro) -->
-        <div id="dashboardSubCard" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 sm:p-7 text-white shadow-xl border border-emerald-500/30">
+        <div id="dashboardSubCard" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 p-6 sm:p-7 text-white shadow-xl border border-blue-500/30 cursor-pointer hover:border-blue-400/60 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-200 group">
           
           <!-- Background Glow Elements -->
-          <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div class="absolute -left-12 -bottom-12 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-500/30 transition"></div>
+          <div class="absolute -left-12 -bottom-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
           <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             
             <div class="space-y-3">
               <div class="flex items-center gap-2.5 flex-wrap">
-                <span id="dashboardPlanBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
+                <span id="dashboardPlanBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase bg-blue-600 text-white shadow-md shadow-blue-600/30">
                   <i data-lucide="zap" class="w-3.5 h-3.5"></i>
                   <span id="dashboardPlanBadgeText">PRO MEMBER ACTIVE</span>
                 </span>
-                <span id="dashboardDaysBadge" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-emerald-300 backdrop-blur-sm border border-emerald-400/20">
+                <span id="dashboardDaysBadge" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-blue-300 backdrop-blur-sm border border-blue-400/20">
                   <i data-lucide="clock" class="w-3.5 h-3.5"></i>
-                  <strong id="dashboardDaysRemaining">30</strong>&nbsp;Days Left
+                  <strong id="dashboardDaysRemaining" class="font-semibold">30</strong>&nbsp;Days Left
                 </span>
               </div>
 
               <div>
-                <h2 id="dashboardPlanTitle" class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-baseline gap-2">
+                <h2 id="dashboardPlanTitle" class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-baseline gap-2">
                   <span>Monthly Pro Plan</span>
-                  <span class="text-lg font-bold text-emerald-400">₹49<span class="text-xs text-slate-300">/mo</span></span>
+                  <span class="text-base font-semibold text-blue-400">₹49<span class="text-xs font-normal text-slate-300">/mo</span></span>
                 </h2>
                 <p id="dashboardPlanValidityText" class="text-xs text-slate-300 mt-1">
-                  Valid until: <strong id="dashboardExpiryDate" class="text-white font-mono font-semibold">Loading...</strong>
+                  Valid until: <strong id="dashboardExpiryDate" class="text-white font-mono font-medium">Loading...</strong>
                 </p>
               </div>
 
               <!-- Days Remaining Progress Bar -->
               <div class="w-full max-w-md pt-1 space-y-1.5">
-                <div class="flex justify-between text-[11px] font-semibold text-slate-300">
+                <div class="flex justify-between text-[11px] font-medium text-slate-300">
                   <span>Subscription Validity</span>
                   <span id="dashboardProgressPercent">100% Active</span>
                 </div>
-                <div class="w-full h-2.5 bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-600/40">
-                  <div id="dashboardProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-300 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                <div class="w-full h-2 bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-600/40">
+                  <div id="dashboardProgressBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all duration-500" style="width: 100%;"></div>
                 </div>
+              </div>
+
+              <!-- Click affordance -->
+              <div class="flex items-center gap-1.5 text-xs font-medium text-blue-400 group-hover:text-blue-300 pt-1 transition">
+                <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
+                <span>View Plan Details & Payment History</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"></i>
               </div>
             </div>
 
             <!-- Subscription Action Buttons -->
             <div class="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
-              <button id="dashboardPayNowBtn" class="px-5 py-3.5 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
+              <button id="dashboardPayNowBtn" class="px-5 py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
                 <i data-lucide="credit-card" class="w-4 h-4"></i>
                 <span id="dashboardPayBtnText">Renew / Extend Plan (₹49)</span>
-              </button>
-              <button id="dashboardTestBypassBtn" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 backdrop-blur-sm border border-white/10 cursor-pointer">
-                <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-amber-400"></i>
-                <span>🧪 Test Activate 30-Days</span>
               </button>
             </div>
 
@@ -399,40 +408,40 @@
           
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">WhatsApp</span>
-              <i data-lucide="message-circle" class="w-4 h-4 text-emerald-500"></i>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">WhatsApp</span>
+              <i data-lucide="message-circle" class="w-4 h-4 text-blue-500"></i>
             </div>
-            <p id="dashboardStatWA" class="text-lg font-black text-slate-900 dark:text-white">Checking...</p>
-            <p id="dashboardStatWADesc" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live Monitoring
+            <p id="dashboardStatWA" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Checking...</p>
+            <p id="dashboardStatWADesc" class="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Live Monitoring
             </p>
           </div>
 
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Active Rules</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Active Rules</span>
               <i data-lucide="tags" class="w-4 h-4 text-indigo-500"></i>
             </div>
-            <p id="dashboardStatKeywords" class="text-lg font-black text-slate-900 dark:text-white">0</p>
+            <p id="dashboardStatKeywords" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</p>
             <p class="text-[10px] text-slate-400">Include & Exclude</p>
           </div>
 
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Matched Trips</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Matched Trips</span>
               <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
             </div>
-            <p id="dashboardStatMatches" class="text-lg font-black text-slate-900 dark:text-white">0</p>
-            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Real-time alerts</p>
+            <p id="dashboardStatMatches" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</p>
+            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Real-time alerts</p>
           </div>
 
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Plan Rate</span>
-              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Plan Rate</span>
+              <i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i>
             </div>
-            <p class="text-lg font-black text-slate-900 dark:text-white">₹49<span class="text-xs font-normal text-slate-400">/mo</span></p>
-            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Pro Unlocked</p>
+            <p class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">₹49<span class="text-xs font-normal text-slate-400">/mo</span></p>
+            <p class="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Pro Unlocked</p>
           </div>
 
         </div>
@@ -441,11 +450,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           
           <button id="dashboardGoWhatsAppBtn" class="p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs transition text-left flex items-center gap-3.5 group cursor-pointer">
-            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
+            <div class="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition">
               <i data-lucide="message-circle" class="w-6 h-6"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition">Live Chats</p>
+              <p class="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 transition">Live Chats</p>
               <p class="text-[11px] text-slate-400 truncate">Read and search WhatsApp</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
@@ -456,7 +465,7 @@
               <i data-lucide="sparkles" class="w-6 h-6"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition">Matched Trips</p>
+              <p class="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 transition">Matched Trips</p>
               <p class="text-[11px] text-slate-400 truncate">View high-priority leads</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
@@ -467,7 +476,7 @@
               <i data-lucide="tags" class="w-6 h-6"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition">Keyword Rules</p>
+              <p class="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 transition">Keyword Rules</p>
               <p class="text-[11px] text-slate-400 truncate">Configure pickup / drops</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition"></i>
@@ -479,10 +488,10 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <i data-lucide="receipt" class="w-5 h-5 text-emerald-500"></i>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Payment Receipts & Invoices</h3>
+              <i data-lucide="receipt" class="w-5 h-5 text-blue-500"></i>
+              <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Payment Receipts & Invoices</h3>
             </div>
-            <span class="text-[11px] font-semibold text-slate-400">Razorpay Gateway (INR)</span>
+            <span class="text-[11px] font-medium text-slate-400">Razorpay Gateway (INR)</span>
           </div>
 
           <div id="dashboardPaymentsList" class="space-y-2">
@@ -504,38 +513,38 @@
       <!-- LEFT SIDEBAR: Account Header, Search, Filter Pills, & Chat List -->
       <aside id="chatSidebar" class="w-full sm:w-80 md:w-96 bg-white dark:bg-wa-sidebarDark border-r border-slate-100 dark:border-slate-800 flex flex-col flex-shrink-0 h-full">
 
-        <!-- iOS Top Header: "Chats" + Camera + Green Plus + Theme/Refresh -->
+        <!-- iOS Top Header: "Chats" + Camera + Plus + Theme/Refresh -->
         <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0">
           <div class="flex items-center gap-2">
-            <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Chats</h1>
+            <h1 class="text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight font-bold">Chats</h1>
             <div id="statusBadge" class="flex items-center ml-1" title="Connected">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span>
             </div>
           </div>
 
           <div class="flex items-center gap-1.5 sm:gap-2">
             <!-- 1. Floating Overflow Card (Document PiP) -->
-            <button id="pipOverlayBtn" title="Pop-Out Always-On-Top Floating Card (Visible across all apps)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center active:scale-95 transition border border-emerald-200/60 dark:border-emerald-800/40">
+            <button id="pipOverlayBtn" title="Pop-Out Always-On-Top Floating Card (Visible across all apps)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center active:scale-95 transition border border-blue-200/60 dark:border-blue-800/40 cursor-pointer">
               <i data-lucide="picture-in-picture-2" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
 
             <!-- 2. Desktop Notifications Toggle -->
-            <button id="desktopNotifBtn" title="Enable Chrome Desktop Push Alerts" class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
+            <button id="desktopNotifBtn" title="Enable Chrome Desktop Push Alerts" class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition cursor-pointer">
               <i id="desktopNotifIcon" data-lucide="bell" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              <span id="desktopNotifDot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800"></span>
+              <span id="desktopNotifDot" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-800"></span>
             </button>
 
             <!-- 3. Refresh Button -->
-            <button id="refreshThreadsBtn" title="Refresh Chats" class="p-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <button id="refreshThreadsBtn" title="Refresh Chats" class="p-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
               <i data-lucide="rotate-cw" class="w-5 h-5"></i>
             </button>
 
             <!-- 4. Dark / Light Theme Toggle Button -->
-            <button id="themeToggleBtn" title="Toggle Light / Dark Theme" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition">
+            <button id="themeToggleBtn" title="Toggle Light / Dark Theme" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition cursor-pointer">
               <i id="themeIcon" data-lucide="sun-moon" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
 
-            <button id="logoutBtn" title="Disconnect Account" class="hidden p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition">
+            <button id="logoutBtn" title="Disconnect Account" class="hidden p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition cursor-pointer">
               <i data-lucide="log-out" class="w-4 h-4"></i>
             </button>
           </div>
@@ -545,25 +554,25 @@
         <div class="px-4 py-2 bg-white dark:bg-wa-sidebarDark flex-shrink-0">
           <div class="wa-search-container flex items-center bg-[#f0f2f5] dark:bg-slate-800 rounded-xl px-3.5 py-2 transition-all">
             <i data-lucide="search" class="w-4 h-4 text-slate-400 dark:text-slate-400 mr-2.5 flex-shrink-0 pointer-events-none"></i>
-            <input type="text" id="sidebarSearchInput" placeholder="Search..." class="w-full bg-transparent border-0 border-none outline-none text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none p-0 leading-normal">
+            <input type="text" id="sidebarSearchInput" placeholder="Search..." class="w-full bg-transparent border-0 border-none outline-none text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none p-0 leading-normal font-normal">
           </div>
         </div>
 
         <!-- Category Filter Chips Row: All, Groups, Unread, Channels -->
         <div class="px-4 py-2 bg-white dark:bg-wa-sidebarDark flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0 border-b border-slate-100 dark:border-slate-800/80">
-          <button id="filterAllBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition">
+          <button id="filterAllBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300 flex-shrink-0 transition cursor-pointer">
             All <span id="sidebarTotalCount">0</span>
           </button>
 
-          <button id="filterGroupsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+          <button id="filterGroupsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition cursor-pointer">
             Groups
           </button>
 
-          <button id="filterUnreadBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+          <button id="filterUnreadBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition cursor-pointer">
             Unread <span id="filterUnreadBadge">0</span>
           </button>
 
-          <button id="filterChannelsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition">
+          <button id="filterChannelsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition cursor-pointer">
             Channels
           </button>
         </div>
@@ -583,17 +592,17 @@
 
         <!-- Default Placeholder Screen -->
         <div id="noChatSelected" class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-          <div class="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/20 shadow-lg">
-            <i data-lucide="message-square" class="w-12 h-12"></i>
+          <div class="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200 dark:border-blue-500/20 shadow-lg">
+            <i data-lucide="message-square" class="w-10 h-10"></i>
           </div>
           <div class="space-y-1 max-w-md">
-            <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">WhatsApp Web Monitor</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100">WhatsApp Web Monitor</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
               Select a Group or Contact from the left sidebar to view real-time conversation threads, search messages, and monitor activity live.
             </p>
           </div>
           <div class="flex items-center gap-2 text-xs text-slate-400 bg-white/80 dark:bg-slate-800/80 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
-            <i data-lucide="lock" class="w-3.5 h-3.5 text-emerald-500"></i>
+            <i data-lucide="lock" class="w-3.5 h-3.5 text-blue-500"></i>
             End-to-end connected via Web WhatsApp QR
           </div>
         </div>
@@ -604,28 +613,28 @@
           <!-- Active Chat Top Header -->
           <div class="h-16 bg-wa-headerLight dark:bg-wa-headerDark px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 flex-shrink-0 z-10 shadow-sm">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button id="mobileBackBtn" title="Back to Chat List" class="sm:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition -ml-1">
+              <button id="mobileBackBtn" title="Back to Chat List" class="sm:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition -ml-1 cursor-pointer">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
               </button>
-              <div id="activeChatAvatar" class="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center flex-shrink-0 text-sm shadow">
+              <div id="activeChatAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold flex items-center justify-center flex-shrink-0 text-sm shadow">
                 C
               </div>
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                  <h3 id="activeChatName" class="font-bold text-slate-900 dark:text-white text-sm truncate">Chat Name</h3>
-                  <span id="activeChatTypeBadge" class="hidden px-2 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded text-[10px] font-bold">GROUP</span>
+                  <h3 id="activeChatName" class="font-semibold text-slate-900 dark:text-white text-sm truncate">Chat Name</h3>
+                  <span id="activeChatTypeBadge" class="hidden px-2 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded text-[10px] font-semibold">GROUP</span>
                 </div>
-                <p id="activeChatJid" class="text-[11px] text-slate-500 dark:text-slate-400 truncate">jid@whatsapp.net</p>
+                <p id="activeChatJid" class="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">jid@whatsapp.net</p>
               </div>
             </div>
 
             <div class="flex items-center gap-2">
               <div class="relative hidden sm:block">
                 <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="chatSearchInput" placeholder="Search in chat..." class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+                <input type="text" id="chatSearchInput" placeholder="Search in chat..." class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500">
               </div>
 
-              <button id="exportThreadBtn" title="Export this chat" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <button id="exportThreadBtn" title="Export this chat" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm cursor-pointer">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
                 Export
               </button>
@@ -639,8 +648,8 @@
           <!-- Bottom Outbound Message Bar -->
           <div class="bg-wa-headerLight dark:bg-wa-headerDark p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center gap-3 flex-shrink-0">
             <div class="relative flex-1 flex items-center">
-              <input type="text" id="chatMessageInput" placeholder="Type a message..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-inner">
-              <button id="sendMessageBtn" title="Send WhatsApp Message" class="absolute right-1.5 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition shadow">
+              <input type="text" id="chatMessageInput" placeholder="Type a message..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-inner">
+              <button id="sendMessageBtn" title="Send WhatsApp Message" class="absolute right-1.5 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow cursor-pointer">
                 <i data-lucide="send" class="w-4 h-4"></i>
               </button>
             </div>
@@ -655,21 +664,21 @@
     <!-- PAGE VIEW 2: MATCHING PAGE (Dedicated Matched Trips & Alerts Page) -->
     <div id="pageViewMatching" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
       
-      <!-- Top Header Row: Matched Trips on left (font-weight: 500), Clear CTA on right -->
+      <!-- Top Header Row -->
       <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
         <div class="flex items-center gap-2">
-          <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Matched Trips</h1>
-          <span id="pageMatchingBadge" class="hidden px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold rounded-full text-xs">0</span>
+          <h1 class="text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight font-bold">Matched Trips</h1>
+          <span id="pageMatchingBadge" class="hidden px-2 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 font-medium rounded-full text-xs">0</span>
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2">
           <!-- Always-on-top PiP floating card -->
-          <button id="pipMatchingBtn" title="Pop-Out Always-On-Top Floating Card" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 rounded-full text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-emerald-200/60 dark:border-emerald-800/40">
-            <i data-lucide="picture-in-picture-2" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i>
+          <button id="pipMatchingBtn" title="Pop-Out Always-On-Top Floating Card" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded-full text-xs font-semibold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-blue-200/60 dark:border-blue-800/40 cursor-pointer">
+            <i data-lucide="picture-in-picture-2" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"></i>
             <span>Floating Card</span>
           </button>
 
-          <button id="clearMatchingMsgsBtn" title="Clear un-saved matched trips" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-full text-xs font-semibold transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-rose-100 dark:border-rose-900/30">
+          <button id="clearMatchingMsgsBtn" title="Clear un-saved matched trips" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-full text-xs font-medium transition flex items-center gap-1.5 active:scale-95 shadow-sm border border-rose-100 dark:border-rose-900/30 cursor-pointer">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             <span>Clear</span>
           </button>
@@ -678,15 +687,15 @@
 
       <!-- Sub-Tabs: Matching & Saved -->
       <div class="px-4 py-2 bg-white dark:bg-wa-headerDark flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
-        <button id="matchingTabBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 flex-shrink-0 transition flex items-center gap-1.5">
+        <button id="matchingTabBtn" class="filter-chip active px-3.5 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer">
           <span>Matching</span>
-          <span id="matchingTabCount" class="px-1.5 py-0.2 bg-emerald-200/80 dark:bg-emerald-500/30 rounded-full text-[10px] font-bold">0</span>
+          <span id="matchingTabCount" class="px-1.5 py-0.2 bg-blue-200/80 dark:bg-blue-500/30 rounded-full text-[10px] font-semibold">0</span>
         </button>
 
-        <button id="savedTabBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5">
+        <button id="savedTabBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition flex items-center gap-1.5 cursor-pointer">
           <i data-lucide="bookmark" class="w-3 h-3 text-amber-500"></i>
           <span>Saved</span>
-          <span id="savedTabCount" class="px-1.5 py-0.2 bg-amber-200/70 dark:bg-amber-500/30 text-amber-800 dark:text-amber-300 rounded-full text-[10px] font-bold">0</span>
+          <span id="savedTabCount" class="px-1.5 py-0.2 bg-amber-200/70 dark:bg-amber-500/30 text-amber-800 dark:text-amber-300 rounded-full text-[10px] font-semibold">0</span>
         </button>
       </div>
 
@@ -701,10 +710,10 @@
     <!-- PAGE VIEW 3: KEYWORDS SETUP PAGE (Dedicated Keyword Management Page) -->
     <div id="pageViewKeywords" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-white dark:bg-wa-dark">
       
-      <!-- Top Header Row: Keywords on left (matching chat text CSS style) -->
+      <!-- Top Header Row -->
       <div class="pt-3 pb-2 px-4 bg-white dark:bg-wa-headerDark flex items-center justify-between flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
         <div class="flex items-center gap-2">
-          <h1 class="text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight" style="font-weight: 500;">Keywords</h1>
+          <h1 class="text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight font-bold">Keywords</h1>
         </div>
       </div>
 
@@ -712,39 +721,39 @@
       <div class="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto">
 
       <!-- MESSAGE MONITORING FILTER SECTION (UPCOMING VS ALL MESSAGES) -->
-      <div class="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-blue-500/30 shadow-sm space-y-3">
+      <div class="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-blue-500/20 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+          <h2 class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
             <i data-lucide="filter" class="w-4 h-4 text-blue-500"></i>
             Message Monitoring Scope
           </h2>
-          <span id="activeScopeBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+          <span id="activeScopeBadge" class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300">
             Active: Upcoming Only
           </span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
           <!-- Option 1: Upcoming Messages Only -->
-          <div id="scopeCardUpcoming" class="monitoring-scope-card active p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 cursor-pointer transition-all flex items-center gap-3 shadow-xs">
-            <input type="radio" id="scopeRadioUpcoming" name="monitoringScopeOption" value="upcoming" checked class="w-4 h-4 text-emerald-600 cursor-pointer flex-shrink-0">
+          <div id="scopeCardUpcoming" class="monitoring-scope-card active p-3 rounded-xl border-2 border-blue-500 bg-blue-50/40 dark:bg-blue-950/20 cursor-pointer transition-all flex items-center gap-3 shadow-xs">
+            <input type="radio" id="scopeRadioUpcoming" name="monitoringScopeOption" value="upcoming" checked class="w-4 h-4 text-blue-600 cursor-pointer flex-shrink-0">
             <div class="flex items-center justify-between flex-1 gap-2">
-              <label for="scopeRadioUpcoming" class="font-bold text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
-                <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+              <label for="scopeRadioUpcoming" class="font-medium text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-4 h-4 text-blue-600 dark:text-blue-400"></i>
                 Upcoming Messages Only
               </label>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex-shrink-0">Live</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 flex-shrink-0">Live</span>
             </div>
           </div>
 
           <!-- Option 2: All Messages (Upcoming & Old) -->
           <div id="scopeCardAll" class="monitoring-scope-card p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-all flex items-center gap-3">
-            <input type="radio" id="scopeRadioAll" name="monitoringScopeOption" value="all" class="w-4 h-4 text-emerald-600 cursor-pointer flex-shrink-0">
+            <input type="radio" id="scopeRadioAll" name="monitoringScopeOption" value="all" class="w-4 h-4 text-blue-600 cursor-pointer flex-shrink-0">
             <div class="flex items-center justify-between flex-1 gap-2">
-              <label for="scopeRadioAll" class="font-bold text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
+              <label for="scopeRadioAll" class="font-medium text-xs text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5">
                 <i data-lucide="history" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
                 All Messages (Upcoming & Old)
               </label>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex-shrink-0">Full History</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex-shrink-0">Full History</span>
             </div>
           </div>
         </div>
@@ -752,18 +761,18 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- MATCH KEYWORDS (MUST INCLUDE) CARD -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-emerald-500/30 shadow-sm space-y-4">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-blue-500/30 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+            <h2 class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i>
               Match Keywords (Must Include)
             </h2>
-            <span class="text-xs text-slate-400 font-semibold">Target Trips</span>
+            <span class="text-xs text-slate-400 font-medium">Target Trips</span>
           </div>
 
           <form id="pageAddIncludeKeywordForm" class="flex gap-2">
-            <input type="text" id="pageIncludeKeywordInput" placeholder="Add keyword (e.g. chennai, airport, coonoor)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500">
-            <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+            <input type="text" id="pageIncludeKeywordInput" placeholder="Add keyword (e.g. chennai, airport, coonoor)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-normal">
+            <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer">
               <i data-lucide="plus" class="w-4 h-4"></i> Add
             </button>
           </form>
@@ -773,18 +782,18 @@
         </div>
 
         <!-- EXCLUDE KEYWORDS (MUST NOT INCLUDE) CARD -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-rose-500/30 shadow-sm space-y-4">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-rose-500/30 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
-              <i data-lucide="ban" class="w-5 h-5 text-rose-500"></i>
+            <h2 class="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i>
               Exclude Keywords (Must NOT Include)
             </h2>
-            <span class="text-xs text-slate-400 font-semibold">Filter Out</span>
+            <span class="text-xs text-slate-400 font-medium">Filter Out</span>
           </div>
 
           <form id="pageAddExcludeKeywordForm" class="flex gap-2">
-            <input type="text" id="pageExcludeKeywordInput" placeholder="Exclude word (e.g. vacant, vacant chennai)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500">
-            <button type="submit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+            <input type="text" id="pageExcludeKeywordInput" placeholder="Exclude word (e.g. vacant, going, reaching, free, waiting)..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 font-normal">
+            <button type="submit" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer">
               <i data-lucide="plus" class="w-4 h-4"></i> Add
             </button>
           </form>
@@ -803,7 +812,7 @@
       <div class="px-5 pt-7 pb-5 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800">
         <div class="flex items-center gap-4">
           <div class="relative">
-            <div id="pageProfileAvatar" class="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-extrabold text-2xl flex items-center justify-center shadow-md">
+            <div id="pageProfileAvatar" class="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold text-2xl flex items-center justify-center shadow-md">
               U
             </div>
             <span id="pageProfileGenderBadge" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-900 flex items-center justify-center text-xs shadow-sm">
@@ -813,17 +822,17 @@
           
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <h2 id="pageProfileUserName" class="text-xl font-bold text-slate-900 dark:text-white truncate">Loading User...</h2>
-              <button id="pageProfileEditBtn" title="Edit Profile" class="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <h2 id="pageProfileUserName" class="text-lg font-bold text-slate-900 dark:text-white truncate">Loading User...</h2>
+              <button id="pageProfileEditBtn" title="Edit Profile" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
               </button>
             </div>
-            <p id="pageProfileUserPhone" class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono tracking-wide">+91 ----------</p>
+            <p id="pageProfileUserPhone" class="text-xs font-medium text-slate-500 dark:text-slate-400 font-mono tracking-wide">+91 ----------</p>
             <div class="flex items-center gap-2 mt-1.5">
-              <span id="pageProfileUserGender" class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+              <span id="pageProfileUserGender" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300">
                 Male
               </span>
-              <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              <span class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                 Active Member
               </span>
             </div>
@@ -837,64 +846,63 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                 <i data-lucide="message-circle" class="w-6 h-6"></i>
               </div>
               <div>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">WhatsApp Integration</h3>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white">WhatsApp Integration</h3>
                 <p id="pageProfileWAAccountDesc" class="text-xs text-slate-500 dark:text-slate-400">Checking connection...</p>
               </div>
             </div>
-            <span id="pageProfileWAStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span id="pageProfileWAStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
               Connected
             </span>
           </div>
 
           <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
             <span class="text-xs text-slate-500 dark:text-slate-400">Shared background sync is active</span>
-            <button id="profileOpenWAModalBtn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+            <button id="profileOpenWAModalBtn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
               <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
               <span>Device Info</span>
             </button>
           </div>
         </div>
 
-
         <!-- Application Features & Scope Navigation -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/60 border border-slate-200 dark:border-slate-700 shadow-sm">
           
-          <button id="profileEditModalTriggerBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
-            <i data-lucide="user-cog" class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"></i>
+          <button id="profileEditModalTriggerBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left cursor-pointer">
+            <i data-lucide="user-cog" class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0"></i>
             <div class="flex-1">
-              <p class="text-xs font-bold text-slate-800 dark:text-white">Edit Profile</p>
+              <p class="text-xs font-semibold text-slate-800 dark:text-white">Edit Profile</p>
               <p class="text-[11px] text-slate-400">Change username or gender</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
           </button>
 
-          <button id="profileManageKeywordsBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+          <button id="profileManageKeywordsBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left cursor-pointer">
             <i data-lucide="sliders-horizontal" class="w-5 h-5 text-indigo-500 flex-shrink-0"></i>
             <div class="flex-1">
-              <p class="text-xs font-bold text-slate-800 dark:text-white">Trip Match & Exclude Keywords</p>
+              <p class="text-xs font-semibold text-slate-800 dark:text-white">Trip Match & Exclude Keywords</p>
               <p class="text-[11px] text-slate-400">Configure search filters</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
           </button>
 
-          <button id="profileHelpBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+          <button id="profileHelpBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left cursor-pointer">
             <i data-lucide="help-circle" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
             <div class="flex-1">
-              <p class="text-xs font-bold text-slate-800 dark:text-white">Help & User Guide</p>
+              <p class="text-xs font-semibold text-slate-800 dark:text-white">Help & User Guide</p>
               <p class="text-[11px] text-slate-400">How to use and connect</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
           </button>
 
-          <button id="profilePrivacyBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left">
+          <button id="profilePrivacyBtn" class="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left cursor-pointer">
             <i data-lucide="shield-check" class="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0"></i>
             <div class="flex-1">
-              <p class="text-xs font-bold text-slate-800 dark:text-white">Privacy & Permissions</p>
+              <p class="text-xs font-semibold text-slate-800 dark:text-white">Privacy & Permissions</p>
               <p class="text-[11px] text-slate-400">Data stored locally on server</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
@@ -903,13 +911,178 @@
 
         <!-- User Logout Card -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
-          <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left">
+          <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left cursor-pointer">
             <i data-lucide="log-out" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
             <div class="flex-1">
-              <span class="text-xs font-bold text-rose-600 dark:text-rose-400">Log Out User Session</span>
+              <span class="text-xs font-semibold text-rose-600 dark:text-rose-400">Log Out User Session</span>
               <p class="text-[10px] text-slate-400">Returns to mobile login (WhatsApp remains connected)</p>
             </div>
           </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- PAGE VIEW 6: PLAN DETAILS & BILLING HISTORY -->
+    <div id="pageViewPlanDetails" class="page-view hidden flex-1 flex flex-col w-full h-full overflow-y-auto bg-slate-50 dark:bg-wa-dark">
+
+      <!-- Top Header with Back Navigation -->
+      <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 py-3.5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-3">
+          <button id="planDetailsBackBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Dashboard</span>
+          </button>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-2">
+              <span>Subscription & Billing</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300">PRO</span>
+            </h1>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Active membership details and Razorpay invoice records</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="planDetailsRefreshBtn" title="Refresh Billing Info" class="p-2 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Plan Details Scrollable Body -->
+      <div class="p-4 sm:p-6 pb-28 space-y-6 max-w-4xl mx-auto w-full flex-1">
+
+        <!-- 1. ACTIVE PLAN HERO CARD -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 p-6 sm:p-8 text-white shadow-xl border border-red-500/30">
+          <!-- Ambient Lights -->
+          <div class="absolute -right-16 -top-16 w-56 h-56 bg-red-500/25 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -left-16 -bottom-16 w-56 h-56 bg-rose-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="relative z-10 space-y-6">
+            <!-- Top Status Row -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <span id="planDetailsStatusBadge" class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold tracking-wide uppercase bg-red-600 text-white shadow-md shadow-red-600/30">
+                  <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                  <span id="planDetailsStatusBadgeText">PRO MEMBER ACTIVE</span>
+                </span>
+                <span id="planDetailsDaysBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-red-300 backdrop-blur-sm border border-red-400/20">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                  <span id="planDetailsDaysRemaining">30</span> Days Left
+                </span>
+              </div>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-red-400"></i>
+                Razorpay Verified
+              </span>
+            </div>
+
+            <!-- Title & Price -->
+            <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-white/10 pb-5">
+              <div>
+                <h2 id="planDetailsTitle" class="text-xl sm:text-2xl font-bold tracking-tight text-white">Monthly Pro Plan</h2>
+                <p class="text-xs text-slate-300 mt-0.5">Automated WhatsApp keyword monitoring & instant alerts</p>
+              </div>
+              <div class="text-left sm:text-right">
+                <div class="text-2xl sm:text-3xl font-bold text-red-400 font-mono">₹49<span class="text-xs font-normal text-slate-300"> / month</span></div>
+                <div class="text-[11px] text-slate-400 font-medium">30-Day Validity Cycle</div>
+              </div>
+            </div>
+
+            <!-- Validity Progress Bar -->
+            <div class="space-y-2">
+              <div class="flex justify-between text-xs font-medium text-slate-300">
+                <span>Plan Expiration Timeline</span>
+                <span id="planDetailsProgressPercent">100% Active</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-600/40">
+                <div id="planDetailsProgressBar" class="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-full transition-all duration-500" style="width: 100%;"></div>
+              </div>
+            </div>
+
+            <!-- Active Subscription Details Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+              
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Activation Date</span>
+                <p id="planDetailsStartedAt" class="text-xs font-semibold text-white font-mono">-</p>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Expiration Date</span>
+                <p id="planDetailsExpiresAt" class="text-xs font-semibold text-red-300 font-mono">-</p>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Subscription Status</span>
+                <p id="planDetailsStatusText" class="text-xs font-semibold text-red-400">Active Pro</p>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Active Payment ID</span>
+                  <button id="copyPaymentIdBtn" title="Copy Payment ID" class="text-slate-400 hover:text-white transition cursor-pointer">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                  </button>
+                </div>
+                <p id="planDetailsPaymentId" class="text-xs font-mono text-slate-200 truncate">-</p>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Active Order ID</span>
+                  <button id="copyOrderIdBtn" title="Copy Order ID" class="text-slate-400 hover:text-white transition cursor-pointer">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                  </button>
+                </div>
+                <p id="planDetailsOrderId" class="text-xs font-mono text-slate-200 truncate">-</p>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-1">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">Billing Account</span>
+                <p id="planDetailsPhone" class="text-xs font-mono font-medium text-slate-200 truncate">-</p>
+              </div>
+
+            </div>
+
+            <!-- Action Button -->
+            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+              <button id="planDetailsRenewBtn" class="flex-1 px-6 py-3.5 bg-red-600 hover:bg-red-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-red-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
+                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                <span id="planDetailsRenewBtnText">Renew / Extend Subscription (₹49)</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 2. PAYMENT HISTORY & INVOICES SECTION -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-6 space-y-4">
+          
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center">
+                <i data-lucide="receipt" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Payment History & Invoices</span>
+                  <span id="planDetailsPaymentsBadgeCount" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">0 records</span>
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-normal">All Razorpay transactions and renewal receipts</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transaction List -->
+          <div id="planDetailsPaymentsList" class="space-y-3">
+            <div class="text-center py-8 text-slate-400 text-xs">
+              <i data-lucide="receipt" class="w-6 h-6 mx-auto mb-1.5 opacity-40"></i>
+              Loading payment history...
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -922,27 +1095,27 @@
 
   <!-- BOTTOM NAVIGATION BAR (1. Dashboard, 2. WhatsApp, 3. Matching, 4. Keywords, 5. Profile) -->
   <nav id="bottomNav" class="hidden h-16 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-around z-40 flex-shrink-0 shadow-sm px-1.5 sm:px-2">
-    <button data-tab="dashboard" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-bold transition text-emerald-600 dark:text-emerald-400 cursor-pointer">
+    <button data-tab="dashboard" class="bottom-nav-btn active-tab flex flex-col items-center justify-center flex-1 py-1 text-xs font-semibold transition text-red-600 dark:text-red-400 cursor-pointer">
       <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
-      <span class="text-[11px] font-semibold">Dashboard</span>
+      <span class="text-[11px] font-medium">Dashboard</span>
     </button>
 
-    <button data-tab="whatsapp" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+    <button data-tab="whatsapp" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-red-600 cursor-pointer">
       <i data-lucide="message-circle" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">WhatsApp</span>
     </button>
 
-    <button data-tab="matching" class="bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+    <button data-tab="matching" class="bottom-nav-btn relative flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-red-600 cursor-pointer">
       <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Matching</span>
     </button>
 
-    <button data-tab="keywords" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+    <button data-tab="keywords" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-red-600 cursor-pointer">
       <i data-lucide="tags" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Keywords</span>
     </button>
 
-    <button data-tab="profile" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-emerald-600 cursor-pointer">
+    <button data-tab="profile" class="bottom-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-xs font-medium transition text-slate-500 dark:text-slate-400 hover:text-red-600 cursor-pointer">
       <i data-lucide="circle-user" class="w-5 h-5 mb-0.5"></i>
       <span class="text-[11px]">Profile</span>
     </button>
@@ -957,46 +1130,46 @@
             <i data-lucide="tags" class="w-6 h-6"></i>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Keywords Setup</h2>
+            <h2 class="text-base font-bold text-slate-900 dark:text-white">Keywords Setup</h2>
             <p class="text-xs text-slate-500 dark:text-slate-400">Configure matching and exclude rules for WhatsApp monitoring</p>
           </div>
         </div>
-        <button id="closeKeywordsModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition">
+        <button id="closeKeywordsModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
       <div class="space-y-4">
         <!-- MONITORING SCOPE SELECTOR -->
-        <div class="space-y-2 bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200/60 dark:border-blue-800/40">
-          <label class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center justify-between">
+        <div class="space-y-2 bg-red-50/40 dark:bg-red-950/20 p-3 rounded-xl border border-red-200/60 dark:border-red-800/40">
+          <label class="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center justify-between">
             <span class="flex items-center gap-1.5">
-              <i data-lucide="filter" class="w-4 h-4 text-blue-500"></i>
+              <i data-lucide="filter" class="w-4 h-4 text-red-500"></i>
               Monitoring Scope
             </span>
-            <span id="modalScopeBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">Upcoming Only</span>
+            <span id="modalScopeBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300">Upcoming Only</span>
           </label>
           <div class="grid grid-cols-2 gap-2 pt-1">
-            <button type="button" id="modalScopeUpcomingBtn" class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition bg-emerald-100 text-emerald-800 border-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-300">
+            <button type="button" id="modalScopeUpcomingBtn" class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition bg-red-100 text-red-800 border-red-400 dark:bg-red-500/20 dark:text-red-300 cursor-pointer">
               <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Upcoming Only
             </button>
-            <button type="button" id="modalScopeAllBtn" class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+            <button type="button" id="modalScopeAllBtn" class="py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 cursor-pointer">
               <i data-lucide="history" class="w-3.5 h-3.5"></i> All Messages
             </button>
           </div>
         </div>
 
         <!-- MATCH KEYWORDS (MUST INCLUDE) -->
-        <div class="space-y-2 bg-emerald-50/50 dark:bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40">
-          <label class="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+        <div class="space-y-2 bg-red-50/30 dark:bg-red-950/10 p-3.5 rounded-xl border border-red-200/60 dark:border-red-800/40">
+          <label class="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center justify-between">
             <span class="flex items-center gap-1.5">
-              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-red-500"></i>
               Match Keywords (Must Include)
             </span>
           </label>
           <form id="modalAddIncludeKeywordForm" class="flex gap-2">
-            <input type="text" id="modalIncludeKeywordInput" placeholder="e.g. chennai, airport, trip..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
-            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1">
+            <input type="text" id="modalIncludeKeywordInput" placeholder="e.g. chennai, airport, trip..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-red-500">
+            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-medium text-xs rounded-lg transition shadow flex items-center gap-1 cursor-pointer">
               <i data-lucide="plus" class="w-4 h-4"></i> Add
             </button>
           </form>
@@ -1007,15 +1180,15 @@
 
         <!-- EXCLUDE KEYWORDS (MUST NOT INCLUDE) -->
         <div class="space-y-2 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
-          <label class="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center justify-between">
+          <label class="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center justify-between">
             <span class="flex items-center gap-1.5">
               <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i>
               Exclude Keywords (Must NOT Include)
             </span>
           </label>
           <form id="modalAddExcludeKeywordForm" class="flex gap-2">
-            <input type="text" id="modalExcludeKeywordInput" placeholder="e.g. vacant, vacant chennai..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500">
-            <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg transition shadow flex items-center gap-1">
+            <input type="text" id="modalExcludeKeywordInput" placeholder="e.g. vacant, going, reaching, free, waiting..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500">
+            <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-lg transition shadow flex items-center gap-1 cursor-pointer">
               <i data-lucide="plus" class="w-4 h-4"></i> Add
             </button>
           </form>
@@ -1026,7 +1199,7 @@
       </div>
 
       <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-        <button id="doneKeywordsModalBtn" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition">
+        <button id="doneKeywordsModalBtn" class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold text-xs rounded-xl shadow transition cursor-pointer">
           Done & Apply
         </button>
       </div>
@@ -1038,18 +1211,18 @@
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
         <div class="flex items-center gap-3">
-          <div id="profileModalAvatar" class="w-12 h-12 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-lg shadow-md">
+          <div id="profileModalAvatar" class="w-12 h-12 rounded-full bg-red-600 text-white font-bold flex items-center justify-center text-lg shadow-md">
             WA
           </div>
           <div>
             <h2 id="profileModalName" class="text-base font-bold text-slate-900 dark:text-white">WhatsApp Account</h2>
             <div id="profileModalStatusBadge" class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
               <span id="profileModalStatusText">Connected</span>
             </div>
           </div>
         </div>
-        <button id="closeProfileModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition">
+        <button id="closeProfileModalBtn" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 rounded-lg transition cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -1058,33 +1231,33 @@
         <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
           <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
             <span>Total Messages Monitored:</span>
-            <strong id="profileTotalMsgs" class="text-emerald-600 dark:text-emerald-400 font-bold">0</strong>
+            <strong id="profileTotalMsgs" class="text-red-600 dark:text-red-400 font-semibold">0</strong>
           </div>
           <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
             <span>Active Keyword Alerts:</span>
-            <strong id="profileTotalAlerts" class="text-amber-500 font-bold">0</strong>
+            <strong id="profileTotalAlerts" class="text-amber-500 font-semibold">0</strong>
           </div>
           <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
             <span>Theme Mode:</span>
-            <button id="profileThemeToggleBtn" class="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1 transition">
+            <button id="profileThemeToggleBtn" class="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg font-medium text-slate-800 dark:text-slate-100 flex items-center gap-1 transition cursor-pointer">
               <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-500"></i>
               <span>Toggle Light/Dark</span>
             </button>
           </div>
         </div>
 
-        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 space-y-1">
-          <p class="font-bold flex items-center gap-1"><i data-lucide="shield-check" class="w-4 h-4"></i> Live WhatsApp Bridge Status</p>
+        <div class="p-3 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200/50 dark:border-red-800/40 text-[11px] text-red-800 dark:text-red-300 space-y-1">
+          <p class="font-semibold flex items-center gap-1"><i data-lucide="shield-check" class="w-4 h-4"></i> Live WhatsApp Bridge Status</p>
           <p>Your WhatsApp account is active and automatically receiving live group trip requests and keyword notifications in real-time.</p>
         </div>
       </div>
 
       <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
-        <button id="profileShowQRBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
-          <i data-lucide="qr-code" class="w-4 h-4 text-emerald-500"></i>
+        <button id="profileShowQRBtn" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
+          <i data-lucide="qr-code" class="w-4 h-4 text-red-500"></i>
           Scan QR Code
         </button>
-        <button id="profileLogoutBtn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow">
+        <button id="profileLogoutBtn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow cursor-pointer">
           <i data-lucide="log-out" class="w-4 h-4"></i>
           Disconnect
         </button>
@@ -1099,8 +1272,8 @@
     <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-6 pb-8 space-y-5 animate-slide-up">
       <!-- Handle -->
       <div class="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-1"></div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Help & Support</h2>
-      <p class="text-sm text-slate-500 dark:text-slate-400">Reach us through any of the channels below — we're happy to help!</p>
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white">Help & Support</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400">Reach us through any of the channels below — we're happy to help!</p>
 
       <!-- Email CTA -->
       <a href="mailto:support@pickmicabs.com" class="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-4 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
@@ -1116,8 +1289,8 @@
 
       <!-- WhatsApp CTA -->
       <a href="https://wa.me/918867791805?text=Hi%2C%20I%20need%20help%20with%20the%20WhatsApp%20Monitor%20app" target="_blank" class="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-4 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-        <div class="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
-          <i data-lucide="message-circle" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+        <div class="w-11 h-11 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="message-circle" class="w-5 h-5 text-red-600 dark:text-red-400"></i>
         </div>
         <div class="flex-1">
           <p class="text-sm font-semibold text-slate-800 dark:text-white">WhatsApp</p>
@@ -1126,7 +1299,7 @@
         <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-400"></i>
       </a>
 
-      <button id="helpBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Close</button>
+      <button id="helpBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">Close</button>
     </div>
   </div>
 
@@ -1137,26 +1310,26 @@
       <!-- Handle -->
       <div class="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-1"></div>
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
-          <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+        <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="shield-check" class="w-5 h-5 text-red-600"></i>
         </div>
-        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Privacy Policy</h2>
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Privacy Policy</h2>
       </div>
 
-      <div class="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-        <p><strong class="text-slate-800 dark:text-white">Data Collection</strong><br>This app monitors WhatsApp messages from groups you are part of to detect trip-related keywords. Messages are stored locally on your device server only.</p>
-        <p><strong class="text-slate-800 dark:text-white">No Sharing</strong><br>Your data is never shared with any third party. All processing happens on your own server.</p>
-        <p><strong class="text-slate-800 dark:text-white">WhatsApp Connection</strong><br>This app uses the WhatsApp Web protocol. Your session credentials are stored locally and never transmitted to external servers.</p>
-        <p><strong class="text-slate-800 dark:text-white">Cookies &amp; Storage</strong><br>We use browser localStorage to store your saved trips and UI preferences only.</p>
+      <div class="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 space-y-3 text-xs text-slate-600 dark:text-slate-300">
+        <p><strong class="text-slate-800 dark:text-white font-medium">Data Collection</strong><br>This app monitors WhatsApp messages from groups you are part of to detect trip-related keywords. Messages are stored locally on your device server only.</p>
+        <p><strong class="text-slate-800 dark:text-white font-medium">No Sharing</strong><br>Your data is never shared with any third party. All processing happens on your own server.</p>
+        <p><strong class="text-slate-800 dark:text-white font-medium">WhatsApp Connection</strong><br>This app uses the WhatsApp Web protocol. Your session credentials are stored locally and never transmitted to external servers.</p>
+        <p><strong class="text-slate-800 dark:text-white font-medium">Cookies &amp; Storage</strong><br>We use browser localStorage to store your saved trips and UI preferences only.</p>
       </div>
 
       <!-- Acceptance notice -->
-      <div class="flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3">
-        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"></i>
-        <p class="text-xs text-emerald-700 dark:text-emerald-300 font-medium">By using this app you have accepted these terms and our privacy policy.</p>
+      <div class="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3">
+        <i data-lucide="check-circle-2" class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"></i>
+        <p class="text-xs text-red-700 dark:text-red-300 font-medium">By using this app you have accepted these terms and our privacy policy.</p>
       </div>
 
-      <button id="privacyBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Got it</button>
+      <button id="privacyBottomSheetClose" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">Got it</button>
     </div>
   </div>
 
@@ -1171,18 +1344,18 @@
           <i data-lucide="message-square" class="w-5 h-5 text-amber-600"></i>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Send Feedback</h2>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Send Feedback</h2>
           <p class="text-xs text-slate-500 dark:text-slate-400">Help us improve the app</p>
         </div>
       </div>
 
-      <input id="feedbackTitle" type="text" placeholder="Title (e.g. Feature request, Bug report)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-      <input id="feedbackSubtitle" type="text" placeholder="Subtitle (optional summary)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-      <textarea id="feedbackContent" rows="4" placeholder="Describe your feedback in detail..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+      <input id="feedbackTitle" type="text" placeholder="Title (e.g. Feature request, Bug report)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <input id="feedbackSubtitle" type="text" placeholder="Subtitle (optional summary)" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <textarea id="feedbackContent" rows="4" placeholder="Describe your feedback in detail..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"></textarea>
 
       <div class="flex gap-3">
-        <button id="feedbackBottomSheetClose" class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Cancel</button>
-        <button id="feedbackSendBtn" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition flex items-center justify-center gap-2">
+        <button id="feedbackBottomSheetClose" class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">Cancel</button>
+        <button id="feedbackSendBtn" class="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer">
           <i data-lucide="send" class="w-4 h-4"></i>
           Send
         </button>
@@ -1192,76 +1365,67 @@
 
   <!-- PAYWALL & SUBSCRIPTION RESTRICTION MODAL -->
   <div id="paywallModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden relative text-left transition-all">
-      <button id="closePaywallModalBtn" class="absolute top-4 right-4 z-20 p-2 text-slate-300 hover:text-white rounded-full hover:bg-white/10 transition" title="Close">
+    <div class="bg-white dark:bg-slate-900 border border-red-500/40 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden relative text-left transition-all">
+      <button id="closePaywallModalBtn" class="absolute top-4 right-4 z-20 p-2 text-slate-300 hover:text-white rounded-full hover:bg-white/10 transition cursor-pointer" title="Close">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
       <!-- Top Glow Banner -->
-      <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white text-center space-y-2 border-b border-emerald-500/20">
-        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 rounded-full text-xs font-black uppercase tracking-wider mb-1">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+      <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 p-6 text-white text-center space-y-2 border-b border-red-500/20">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 border border-red-400/30 text-red-300 rounded-full text-xs font-semibold uppercase tracking-wider mb-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-red-400"></i>
           <span>PRO MEMBERSHIP REQUIRED</span>
         </div>
-        <h2 class="text-2xl font-black tracking-tight text-white">Activate Plan to Connect WhatsApp</h2>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Activate Plan to Connect WhatsApp</h2>
         <p class="text-xs text-slate-300 max-w-sm mx-auto">
-          Please subscribe to the <strong class="text-emerald-400 font-bold">₹49/month plan</strong> to link your WhatsApp account, scan QR code, and receive real-time match alerts.
+          Please subscribe to the <strong class="text-red-400 font-semibold">₹49/month plan</strong> to link your WhatsApp account, scan QR code, and receive real-time match alerts.
         </p>
       </div>
 
       <div class="p-6 space-y-5">
         
         <!-- Pricing Pill -->
-        <div class="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl">
+        <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/40 border-2 border-red-500 rounded-2xl">
           <div class="space-y-0.5">
-            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Selected Plan</span>
-            <p class="text-base font-bold text-slate-900 dark:text-white">Monthly Pro Pass</p>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400">Selected Plan</span>
+            <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Monthly Pro Pass</p>
             <p class="text-[11px] text-slate-500 dark:text-slate-400">Full 30-day unmetered access</p>
           </div>
           <div class="text-right">
-            <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400">₹49</p>
-            <span class="text-[10px] font-semibold text-slate-400">/ 30 Days</span>
+            <p class="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 font-mono">₹49</p>
+            <span class="text-[10px] font-medium text-slate-400">/ 30 Days</span>
           </div>
         </div>
 
         <!-- Pro Features List -->
         <div class="space-y-2.5">
-          <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Everything Included in Pro:</p>
+          <p class="text-xs font-semibold text-slate-800 dark:text-slate-200">Everything Included in Pro:</p>
           
           <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
             <div class="flex items-center gap-2.5">
-              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <i data-lucide="check" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
               <span><strong>Real-time WhatsApp Message Sync</strong> across 500+ contacts & groups</span>
             </div>
             <div class="flex items-center gap-2.5">
-              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
-              <span><strong>10-Second Continuous Harmonic Sound Chimes</strong> for trip matches</span>
+              <i data-lucide="check" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
+              <span><strong>10-Second Continuous Sound Alerts</strong> for trip matches</span>
             </div>
             <div class="flex items-center gap-2.5">
-              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <i data-lucide="check" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
               <span><strong>Always-On-Top Floating Card (PiP)</strong> over any desktop app</span>
             </div>
             <div class="flex items-center gap-2.5">
-              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
+              <i data-lucide="check" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
               <span><strong>Unlimited Custom Keywords & Exclude Filters</strong></span>
-            </div>
-            <div class="flex items-center gap-2.5">
-              <i data-lucide="check" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
-              <span><strong>AI Voice Note Transcription & Translation</strong></span>
             </div>
           </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="space-y-2 pt-2">
-          <button id="paywallPayWithRazorpayBtn" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <button id="paywallPayWithRazorpayBtn" class="w-full py-3.5 bg-red-600 hover:bg-red-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
             <i data-lucide="shield-check" class="w-4 h-4"></i>
             <span>Pay ₹49 & Activate Instant Access</span>
-          </button>
-
-          <button id="paywallTestBypassBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
-            <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>🧪 Sandbox Test Payment (1-Click Instant)</span>
           </button>
         </div>
 
@@ -1273,7 +1437,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 
 </body>
 </html>

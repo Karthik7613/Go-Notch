@@ -17,15 +17,18 @@
   --wa-search: #eaecf0;
   --wa-border: #f1f5f9;
   --wa-chat-bg: #efeae2;
-  --wa-bubble-sent: #d9fdd3;
-  --wa-bubble-sent-text: #111b21;
+  --wa-bubble-sent: #dbeafe;
+  --wa-bubble-sent-text: #0f172a;
   --wa-bubble-recv: #ffffff;
   --wa-bubble-recv-text: #111b21;
   --wa-bubble-shadow: 0 1px 1px rgba(11, 20, 26, 0.12);
   --wa-nav-bg: #ffffff;
   --wa-nav-border: #e2e8f0;
   --wa-nav-text: #64748b;
-  --wa-nav-active: #10b981;
+  --wa-nav-active: #2563eb;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-light: #eff6ff;
 }
 
 html.dark {
@@ -38,15 +41,18 @@ html.dark {
   --wa-search: #1e293b;
   --wa-border: #1e293b;
   --wa-chat-bg: #0b141a;
-  --wa-bubble-sent: #005c4b;
-  --wa-bubble-sent-text: #e9edef;
+  --wa-bubble-sent: #1e3a8a;
+  --wa-bubble-sent-text: #dbeafe;
   --wa-bubble-recv: #202c33;
   --wa-bubble-recv-text: #e9edef;
   --wa-bubble-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
   --wa-nav-bg: #121820;
   --wa-nav-border: rgba(255, 255, 255, 0.08);
   --wa-nav-text: #94a3b8;
-  --wa-nav-active: #10b981;
+  --wa-nav-active: #3b82f6;
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+  --brand-light: rgba(59, 130, 246, 0.15);
 }
 
 html, body {
@@ -81,6 +87,12 @@ html, body {
   height: 100% !important;
   min-height: 0 !important;
   position: relative !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+#pageViewWhatsApp {
   overflow: hidden !important;
 }
 
@@ -520,14 +532,14 @@ html.dark .wa-search-container {
   outline: none !important;
 }
 .filter-chip.active {
-  background-color: #d1fae5 !important;
-  color: #065f46 !important;
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
   border: none !important;
   font-weight: 600;
 }
 html.dark .filter-chip.active {
-  background-color: rgba(16, 185, 129, 0.25) !important;
-  color: #34d399 !important;
+  background-color: rgba(37, 99, 235, 0.25) !important;
+  color: #93c5fd !important;
   border: none !important;
 }
 
@@ -548,13 +560,13 @@ html.dark .filter-chip.active {
 }
 
 .bottom-nav-btn.active-tab {
-  color: #10b981 !important;
+  color: #2563eb !important;
 }
 
 .bottom-nav-btn.active-tab i,
 .bottom-nav-btn.active-tab svg {
-  color: #10b981 !important;
-  stroke: #10b981 !important;
+  color: #2563eb !important;
+  stroke: #2563eb !important;
 }
 
 .page-view {
@@ -568,14 +580,14 @@ html.dark .filter-chip.active {
 
 /* Primary Action CTA: View Message */
 .open-chat-cta-btn {
-  background-color: #10b981 !important;
+  background-color: #2563eb !important;
   color: #ffffff !important;
   border: none !important;
   outline: none !important;
   font-weight: 600 !important;
 }
 .open-chat-cta-btn:hover {
-  background-color: #059669 !important;
+  background-color: #1d4ed8 !important;
 }
 
 /* Secondary Action CTA: Call Button */
@@ -596,7 +608,7 @@ html.dark .filter-chip.active {
   background-color: #cbd5e1 !important;
 }
 .call-cta-btn i {
-  color: #059669 !important;
+  color: #2563eb !important;
 }
 .call-cta-btn span {
   color: #0f172a !important;
@@ -613,7 +625,7 @@ html.dark .call-cta-btn:hover {
   border-color: #475569 !important;
 }
 html.dark .call-cta-btn i {
-  color: #34d399 !important;
+  color: #60a5fa !important;
 }
 html.dark .call-cta-btn span {
   color: #f8fafc !important;
@@ -672,7 +684,7 @@ html.dark .save-trip-chip-btn.saved {
   transform: translateY(-1px);
 }
 .monitoring-scope-card.active {
-  box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.12);
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.15);
 }
 html.dark .monitoring-scope-card.active {
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
@@ -690,22 +702,22 @@ html.dark .monitoring-scope-card.active {
 /* Gender Selection Pills */
 .gender-pill-label.active,
 .edit-gender-pill.active {
-  border-color: #10b981 !important;
-  background-color: #ecfdf5 !important;
-  color: #065f46 !important;
-  box-shadow: 0 0 0 1px #10b981;
+  border-color: #2563eb !important;
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+  box-shadow: 0 0 0 1px #2563eb;
 }
 .gender-pill-label.active i {
-  color: #10b981 !important;
+  color: #2563eb !important;
 }
 html.dark .gender-pill-label.active,
 html.dark .edit-gender-pill.active {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  border-color: #10b981 !important;
-  color: #34d399 !important;
+  background-color: rgba(37, 99, 235, 0.15) !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
 }
 html.dark .gender-pill-label.active i {
-  color: #34d399 !important;
+  color: #93c5fd !important;
 }
 
 /* Auth Modal and Login Screen - Rock-Solid Fallback & Premium Look */

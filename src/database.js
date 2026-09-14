@@ -624,7 +624,7 @@ function getStats() {
   };
 }
 
-const DEFAULT_INCLUDE_KEYWORDS = [];
+const DEFAULT_INCLUDE_KEYWORDS = ['chennai', 'airport', 'drop', 'pickup', 'trip', 'outstation', 'cab', 'urgent', 'bangalore', 'pondicherry'];
 const DEFAULT_EXCLUDE_KEYWORDS = ['vacant', 'going', 'reaching', 'free', 'waiting'];
 
 function ensureUserHasKeywords(userPhone) {

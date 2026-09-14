@@ -3684,19 +3684,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial Auth & Data Load
   async function initAppSession() {
     currentUser = getStoredUser();
-    if (!currentUser) {
+    if (!currentUser || !currentUser.phone) {
       showAuthStep('phone');
-    } else {
-      hideAuthModal();
-      renderUserProfile(currentUser);
-      await fetchSubscriptionStatus();
-      switchTab('dashboard');
-      loadStats();
-      loadThreads();
-      loadKeywords();
-      loadKeywordAlerts();
-      updateDesktopNotifUI();
+      return;
     }
+
+    try {
+      // Validate and sync with server database
+      const res = await apiFetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          currentUser = data.user;
+          setStoredUser(currentUser);
+        }
+      } else if (res.status === 404) {
+        // User not in DB (e.g. after fresh database reset)
+        clearStoredUser();
+        showAuthStep('phone');
+        return;
+      }
+    } catch (e) {
+      console.warn('Profile sync warning (offline/cached):', e.message);
+    }
+
+    hideAuthModal();
+    renderUserProfile(currentUser);
+    await fetchSubscriptionStatus();
+    switchTab('dashboard');
+    loadStats();
+    loadThreads();
+    loadKeywords();
+    loadKeywordAlerts();
+    updateDesktopNotifUI();
   }
 
   initAppSession();

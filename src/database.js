@@ -5,7 +5,16 @@ const {
   syncMessageToSupabase,
   syncAIUpdateToSupabase,
   syncContactToSupabase,
-  syncChatToSupabase
+  syncChatToSupabase,
+  syncUserToSupabase,
+  fetchUserFromSupabase,
+  syncSubscriptionToSupabase,
+  fetchSubscriptionFromSupabase,
+  syncPaymentToSupabase,
+  syncKeywordToSupabase,
+  removeKeywordFromSupabase,
+  fetchKeywordsFromSupabase,
+  syncWhatsAppSessionToSupabase
 } = require('./supabase');
 
 
@@ -682,7 +691,11 @@ function addKeyword(keyword, type = 'include', userPhone = '') {
   for (const clean of parts) {
     try {
       const info = insertStmt.run(clean, kwType, cleanPhone, now);
-      if (info.changes > 0) anyAdded = true;
+      if (info.changes > 0) {
+        anyAdded = true;
+        // Asynchronously sync to Supabase
+        syncKeywordToSupabase(clean, kwType, cleanPhone).catch(() => {});
+      }
     } catch (e) {
       console.error('addKeyword token error:', clean, e.message);
     }
@@ -706,6 +719,8 @@ function removeKeyword(keyword, type = 'include', userPhone = '') {
     } else {
       db.prepare("DELETE FROM keywords WHERE LOWER(keyword) = ? AND COALESCE(type, 'include') = ? AND (user_phone = '' OR user_phone IS NULL)").run(clean, kwType);
     }
+    // Asynchronously remove from Supabase
+    removeKeywordFromSupabase(clean, kwType, cleanPhone).catch(() => {});
     return true;
   } catch (e) {
     console.error('removeKeyword error:', e.message);
@@ -920,16 +935,22 @@ function createUser(phone, name, gender = 'Male', passcode = '') {
   const now = Math.floor(Date.now() / 1000);
   try {
     const existing = findUserByPhone(cleanPhone);
+    let finalUser = null;
     if (existing) {
       db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
         .run(name || null, gender || null, cleanPasscode, now, existing.id);
       ensureUserHasKeywords(existing.phone || p10);
-      return findUserByPhone(existing.phone || p10);
+      finalUser = findUserByPhone(existing.phone || p10);
+    } else {
+      const info = db.prepare('INSERT INTO users (phone, name, gender, passcode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(p10, name || 'User', gender || 'Male', cleanPasscode, now, now);
+      ensureUserHasKeywords(p10);
+      finalUser = findUserByPhone(p10);
     }
-    const info = db.prepare('INSERT INTO users (phone, name, gender, passcode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p10, name || 'User', gender || 'Male', cleanPasscode, now, now);
-    ensureUserHasKeywords(p10);
-    return findUserByPhone(p10);
+    if (finalUser) {
+      syncUserToSupabase(finalUser).catch(() => {});
+    }
+    return finalUser;
   } catch (e) {
     console.error('createUser error:', e.message);
     return null;
@@ -946,6 +967,10 @@ function updateUserPasscode(phone, passcode) {
     if (!existing) return false;
     db.prepare('UPDATE users SET passcode = ?, updated_at = ? WHERE id = ?')
       .run(cleanPasscode, now, existing.id);
+    const updated = findUserByPhone(cleanPhone);
+    if (updated) {
+      syncUserToSupabase(updated).catch(() => {});
+    }
     return true;
   } catch (e) {
     console.error('updateUserPasscode error:', e.message);
@@ -969,12 +994,18 @@ function updateUserProfile(phone, name, gender, passcode) {
   const cleanPasscode = passcode ? String(passcode).trim() : null;
   try {
     const existing = findUserByPhone(cleanPhone);
+    let finalUser = null;
     if (existing) {
       db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
         .run(name || null, gender || null, cleanPasscode, now, existing.id);
-      return findUserByPhone(existing.phone || p10);
+      finalUser = findUserByPhone(existing.phone || p10);
+    } else {
+      finalUser = createUser(p10, name, gender, passcode);
     }
-    return createUser(p10, name, gender, passcode);
+    if (finalUser) {
+      syncUserToSupabase(finalUser).catch(() => {});
+    }
+    return finalUser;
   } catch (e) {
     console.error('updateUserProfile error:', e.message);
     return null;
@@ -1086,9 +1117,13 @@ function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice
       INSERT INTO subscriptions (user_phone, plan_name, plan_price, status, started_at, expires_at, payment_id, order_id, created_at, updated_at)
       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(cleanPhone, planName, planPrice, startedAt, expiresAt, paymentId, orderId, now, now);
+    stmt.run(cleanPhone, planName, planPrice, startedAt, expiresAt, paymentId, orderId, now, now);
 
-    return getUserSubscription(cleanPhone);
+    const updatedSub = getUserSubscription(cleanPhone);
+    if (updatedSub) {
+      syncSubscriptionToSupabase(updatedSub).catch(() => {});
+    }
+    return updatedSub;
   } catch (e) {
     console.error('createOrUpdateSubscription error:', e.message);
     throw e;
@@ -1111,6 +1146,19 @@ function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amo
         updated_at = excluded.updated_at
     `);
     stmt.run(cleanPhone, orderId, paymentId, signature, amount, currency, status, method, now, now);
+    
+    // Sync payment to Supabase
+    syncPaymentToSupabase({
+      userPhone: cleanPhone,
+      orderId,
+      paymentId,
+      signature,
+      amount,
+      currency,
+      status,
+      method
+    }).catch(() => {});
+
     return true;
   } catch (e) {
     console.error('recordPayment error:', e.message);

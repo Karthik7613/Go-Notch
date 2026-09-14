@@ -144,11 +144,296 @@ async function syncChatToSupabase(chat) {
   }
 }
 
+/**
+ * Sync user profile to Supabase users table
+ */
+async function syncUserToSupabase(user) {
+  if (!supabase || !user || !user.phone) return false;
+  try {
+    const cleanPhone = String(user.phone).replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      phone: p10,
+      name: user.name || 'User',
+      gender: user.gender || 'Male',
+      passcode: user.passcode ? String(user.passcode).trim() : null,
+      created_at: user.created_at || now,
+      updated_at: user.updated_at || now
+    };
+
+    const { error } = await supabase
+      .from('users')
+      .upsert(payload, { onConflict: 'phone' });
+
+    if (error) {
+      console.warn('⚠️ Supabase syncUser error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase syncUser exception:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch user profile from Supabase by phone
+ */
+async function fetchUserFromSupabase(phone) {
+  if (!supabase || !phone) return null;
+  try {
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .or(`phone.eq.${p10},phone.eq.${cleanPhone},phone.eq.91${p10}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data;
+  } catch (err) {
+    console.warn('⚠️ Supabase fetchUser exception:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Sync subscription to Supabase subscriptions table
+ */
+async function syncSubscriptionToSupabase(sub) {
+  if (!supabase || !sub || !sub.user_phone) return false;
+  try {
+    const cleanPhone = String(sub.user_phone).replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      user_phone: p10,
+      plan_name: sub.plan_name || 'Monthly Pro',
+      plan_price: sub.plan_price || 2,
+      status: sub.status || 'active',
+      started_at: sub.started_at || now,
+      expires_at: sub.expires_at || (now + 30 * 86400),
+      payment_id: sub.payment_id || '',
+      order_id: sub.order_id || '',
+      created_at: sub.created_at || now,
+      updated_at: now
+    };
+
+    const { error } = await supabase
+      .from('subscriptions')
+      .insert(payload);
+
+    if (error) {
+      console.warn('⚠️ Supabase syncSubscription error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase syncSubscription exception:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch active subscription from Supabase
+ */
+async function fetchSubscriptionFromSupabase(phone) {
+  if (!supabase || !phone) return null;
+  try {
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .or(`user_phone.eq.${p10},user_phone.eq.${cleanPhone}`)
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data;
+  } catch (err) {
+    console.warn('⚠️ Supabase fetchSubscription exception:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Sync payment record to Supabase payments table
+ */
+async function syncPaymentToSupabase(payment) {
+  if (!supabase || !payment || !payment.orderId) return false;
+  try {
+    const cleanPhone = String(payment.userPhone || '').replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      user_phone: p10,
+      order_id: payment.orderId,
+      payment_id: payment.paymentId || '',
+      signature: payment.signature || '',
+      amount: payment.amount || 200,
+      currency: payment.currency || 'INR',
+      status: payment.status || 'created',
+      method: payment.method || 'razorpay',
+      created_at: now,
+      updated_at: now
+    };
+
+    const { error } = await supabase
+      .from('payments')
+      .upsert(payload, { onConflict: 'order_id' });
+
+    if (error) {
+      console.warn('⚠️ Supabase syncPayment error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase syncPayment exception:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Sync single keyword to Supabase keywords table
+ */
+async function syncKeywordToSupabase(keyword, type = 'include', userPhone = '') {
+  if (!supabase || !keyword) return false;
+  try {
+    const clean = String(keyword).trim().toLowerCase();
+    const kwType = type === 'exclude' ? 'exclude' : 'include';
+    const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const now = Math.floor(Date.now() / 1000);
+
+    const { error } = await supabase
+      .from('keywords')
+      .insert({
+        keyword: clean,
+        type: kwType,
+        user_phone: p10,
+        created_at: now
+      });
+
+    if (error) {
+      console.warn('⚠️ Supabase syncKeyword error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase syncKeyword exception:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Remove keyword from Supabase keywords table
+ */
+async function removeKeywordFromSupabase(keyword, type = 'include', userPhone = '') {
+  if (!supabase || !keyword) return false;
+  try {
+    const clean = String(keyword).trim().toLowerCase();
+    const kwType = type === 'exclude' ? 'exclude' : 'include';
+    const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+
+    let query = supabase
+      .from('keywords')
+      .delete()
+      .eq('keyword', clean)
+      .eq('type', kwType);
+
+    if (p10) {
+      query = query.or(`user_phone.eq.${p10},user_phone.eq.''`);
+    }
+
+    const { error } = await query;
+    if (error) {
+      console.warn('⚠️ Supabase removeKeyword error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase removeKeyword exception:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch all keywords for a user from Supabase
+ */
+async function fetchKeywordsFromSupabase(userPhone = '') {
+  if (!supabase) return null;
+  try {
+    const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+
+    let query = supabase.from('keywords').select('*');
+    if (p10) {
+      query = query.or(`user_phone.eq.${p10},user_phone.eq.''`);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return null;
+    return data;
+  } catch (err) {
+    console.warn('⚠️ Supabase fetchKeywords exception:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Sync connected WhatsApp session state to Supabase
+ */
+async function syncWhatsAppSessionToSupabase(userPhone, sessionData = {}) {
+  if (!supabase || !userPhone) return false;
+  try {
+    const cleanPhone = String(userPhone).replace(/\D/g, '');
+    const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const now = Math.floor(Date.now() / 1000);
+
+    const payload = {
+      user_phone: p10,
+      connected_jid: sessionData.jid || '',
+      connected_name: sessionData.name || '',
+      connected_phone: sessionData.phone || '',
+      status: sessionData.status || 'connected',
+      last_active: now
+    };
+
+    const { error } = await supabase
+      .from('whatsapp_sessions')
+      .upsert(payload, { onConflict: 'user_phone' });
+
+    if (error) {
+      console.warn('⚠️ Supabase syncWhatsAppSession error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️ Supabase syncWhatsAppSession exception:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   supabase,
   isSupabaseConfigured,
   syncMessageToSupabase,
   syncAIUpdateToSupabase,
   syncContactToSupabase,
-  syncChatToSupabase
+  syncChatToSupabase,
+  syncUserToSupabase,
+  fetchUserFromSupabase,
+  syncSubscriptionToSupabase,
+  fetchSubscriptionFromSupabase,
+  syncPaymentToSupabase,
+  syncKeywordToSupabase,
+  removeKeywordFromSupabase,
+  fetchKeywordsFromSupabase,
+  syncWhatsAppSessionToSupabase
 };

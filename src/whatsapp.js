@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { saveMessage, saveContacts, saveChats, updateRealChatName, updateMessageAI, getKeywords, getAllActiveKeywords, getMonitoringScope, resolveLidToPhone, formatPhoneNumber, enrichMessage, db } = require('./database');
 const { transcribeAndTranslateAudio } = require('./ai');
+const { syncWhatsAppSessionToSupabase } = require('./supabase');
 
 const authFolder = process.env.AUTH_FOLDER || path.join(__dirname, '..', 'auth_info_baileys');
 const mediaDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'media') : path.join(__dirname, '..', 'data', 'media');
@@ -251,6 +252,14 @@ async function connectToWhatsApp() {
           phone: sock.user?.id ? sock.user.id.split(':')[0] : ''
         };
         console.log('✅ WhatsApp connected as:', userInfo.name, userInfo.phone);
+        if (userInfo.phone) {
+          syncWhatsAppSessionToSupabase(userInfo.phone, {
+            jid: userInfo.id,
+            name: userInfo.name,
+            phone: userInfo.phone,
+            status: 'connected'
+          }).catch(() => {});
+        }
         emitStatus();
         setTimeout(resolveAllGroupNames, 2000);
       } else if (connection === 'close') {

@@ -3357,6 +3357,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dashboardProgressBar = document.getElementById('dashboardProgressBar');
   const dashboardPayNowBtn = document.getElementById('dashboardPayNowBtn');
   const dashboardPayBtnText = document.getElementById('dashboardPayBtnText');
+  const dashboardActiveStatusPill = document.getElementById('dashboardActiveStatusPill');
+  const planDetailsActiveStatusPill = document.getElementById('planDetailsActiveStatusPill');
   const dashboardTestBypassBtn = document.getElementById('dashboardTestBypassBtn');
   const dashboardRefreshBtn = document.getElementById('dashboardRefreshBtn');
   const dashboardStatWA = document.getElementById('dashboardStatWA');
@@ -3435,8 +3437,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (dashboardPayBtnText) {
-      dashboardPayBtnText.textContent = isSub ? 'Renew / Extend (+30 Days)' : 'Subscribe Now (₹2/mo)';
+    // Show Renew CTA button ONLY if not subscribed OR expiring within <= 3 days
+    if (dashboardPayNowBtn) {
+      if (isSub && daysLeft > 3) {
+        dashboardPayNowBtn.classList.add('hidden');
+        if (dashboardActiveStatusPill) dashboardActiveStatusPill.classList.remove('hidden');
+      } else {
+        dashboardPayNowBtn.classList.remove('hidden');
+        if (dashboardActiveStatusPill) dashboardActiveStatusPill.classList.add('hidden');
+        if (dashboardPayBtnText) {
+          if (!isSub) {
+            dashboardPayBtnText.textContent = 'Subscribe Monthly Plan (₹2)';
+          } else {
+            dashboardPayBtnText.textContent = `Renew Expiring Plan (${daysLeft}d left - ₹2)`;
+          }
+        }
+      }
     }
 
     // Update Stats Hub
@@ -3522,8 +3538,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (planDetailsRenewBtnText) {
-      planDetailsRenewBtnText.textContent = isSub ? 'Renew & Extend (+30 Days)' : 'Subscribe Plan Now (₹2/mo)';
+    // Show Renew button ONLY if not subscribed OR expiring within <= 3 days
+    if (planDetailsRenewBtn) {
+      if (isSub && daysLeft > 3) {
+        planDetailsRenewBtn.classList.add('hidden');
+        if (planDetailsActiveStatusPill) planDetailsActiveStatusPill.classList.remove('hidden');
+      } else {
+        planDetailsRenewBtn.classList.remove('hidden');
+        if (planDetailsActiveStatusPill) planDetailsActiveStatusPill.classList.add('hidden');
+        if (planDetailsRenewBtnText) {
+          if (!isSub) {
+            planDetailsRenewBtnText.textContent = 'Subscribe Monthly Plan (₹2)';
+          } else {
+            planDetailsRenewBtnText.textContent = `Renew Expiring Plan (${daysLeft}d left - ₹2)`;
+          }
+        }
+      }
     }
 
     renderPlanDetailsPayments();
@@ -3547,7 +3577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="text-center py-10 text-slate-400 text-xs space-y-2">
               <i data-lucide="receipt" class="w-8 h-8 mx-auto opacity-40 text-slate-400"></i>
               <p class="font-medium text-slate-600 dark:text-slate-300">No Payment History Yet</p>
-              <p class="text-[11px] text-slate-400">Complete your first ₹2 subscription via Razorpay to view your invoices here.</p>
+              <p class="text-[11px] text-slate-400">Complete your first ₹2 monthly subscription via Razorpay to view your invoices here.</p>
             </div>
           `;
         } else {
@@ -3561,7 +3591,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs gap-3 shadow-xs hover:border-blue-500/40 transition">
                 <div class="space-y-1 min-w-0">
                   <div class="flex items-center gap-2">
-                    <span class="font-semibold text-slate-900 dark:text-white text-sm">30-Day Pro Subscription</span>
+                    <span class="font-semibold text-slate-900 dark:text-white text-sm">Monthly Pro Subscription</span>
                     <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isSuccess ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300' : 'bg-amber-100 text-amber-800'}">${p.status.toUpperCase()}</span>
                   </div>
                   <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">

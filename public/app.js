@@ -451,27 +451,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalActiveExcludeKeywordTags = document.getElementById('modalActiveExcludeKeywordTags');
 
 
-  // DOM Elements - User Authentication & Profile Setup
+  // DOM Elements - User Authentication & 4-Digit Passcode Setup
   const authModal = document.getElementById('authModal');
   const authModalTitle = document.getElementById('authModalTitle');
   const authModalSubtitle = document.getElementById('authModalSubtitle');
 
   const authPhoneForm = document.getElementById('authPhoneForm');
   const authPhoneInput = document.getElementById('authPhoneInput');
-  const authSendOtpBtn = document.getElementById('authSendOtpBtn');
+  const authPhoneSubmitBtn = document.getElementById('authPhoneSubmitBtn');
 
-  const authOtpForm = document.getElementById('authOtpForm');
-  const authOtpDisplayPhone = document.getElementById('authOtpDisplayPhone');
-  const authChangePhoneBtn = document.getElementById('authChangePhoneBtn');
-  const authOtpCodeHint = document.getElementById('authOtpCodeHint');
-  const authOtpCodeValue = document.getElementById('authOtpCodeValue');
-  const authOtpInput = document.getElementById('authOtpInput');
-  const authVerifyOtpBtn = document.getElementById('authVerifyOtpBtn');
-  const authResendOtpBtn = document.getElementById('authResendOtpBtn');
+  const authPasscodeLoginForm = document.getElementById('authPasscodeLoginForm');
+  const authLoginDisplayPhone = document.getElementById('authLoginDisplayPhone');
+  const authLoginChangePhoneBtn = document.getElementById('authLoginChangePhoneBtn');
+  const authLoginUserName = document.getElementById('authLoginUserName');
+  const authLoginPasscodeInput = document.getElementById('authLoginPasscodeInput');
+  const toggleLoginPasscodeBtn = document.getElementById('toggleLoginPasscodeBtn');
+  const authPasscodeLoginBtn = document.getElementById('authPasscodeLoginBtn');
+  const authForgotPasscodeBtn = document.getElementById('authForgotPasscodeBtn');
 
-  const authProfileForm = document.getElementById('authProfileForm');
-  const authProfileNameInput = document.getElementById('authProfileNameInput');
-  const authCompleteProfileBtn = document.getElementById('authCompleteProfileBtn');
+  const authPasscodeRegisterForm = document.getElementById('authPasscodeRegisterForm');
+  const authRegisterDisplayPhone = document.getElementById('authRegisterDisplayPhone');
+  const authRegisterChangePhoneBtn = document.getElementById('authRegisterChangePhoneBtn');
+  const authRegisterNameInput = document.getElementById('authRegisterNameInput');
+  const authRegisterPasscodeInput = document.getElementById('authRegisterPasscodeInput');
+  const authRegisterConfirmPasscodeInput = document.getElementById('authRegisterConfirmPasscodeInput');
+  const authRegisterSubmitBtn = document.getElementById('authRegisterSubmitBtn');
+
+  const authPasscodeResetForm = document.getElementById('authPasscodeResetForm');
+  const authResetDisplayPhone = document.getElementById('authResetDisplayPhone');
+  const authResetChangePhoneBtn = document.getElementById('authResetChangePhoneBtn');
+  const authResetPasscodeInput = document.getElementById('authResetPasscodeInput');
+  const authResetConfirmPasscodeInput = document.getElementById('authResetConfirmPasscodeInput');
+  const authResetSubmitBtn = document.getElementById('authResetSubmitBtn');
+  const authResetBackToLoginBtn = document.getElementById('authResetBackToLoginBtn');
 
   // Edit Profile Modal Elements
   const editProfileModal = document.getElementById('editProfileModal');
@@ -479,6 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const editProfileForm = document.getElementById('editProfileForm');
   const editProfilePhone = document.getElementById('editProfilePhone');
   const editProfileNameInput = document.getElementById('editProfileNameInput');
+  const editProfilePasscodeInput = document.getElementById('editProfilePasscodeInput');
   const cancelEditProfileBtn = document.getElementById('cancelEditProfileBtn');
 
   // DOM Elements - Profile Page Specific
@@ -514,8 +527,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bottomNav) bottomNav.classList.add('hidden');
 
     if (authPhoneForm) { authPhoneForm.classList.add('hidden'); authPhoneForm.style.display = 'none'; }
-    if (authOtpForm) { authOtpForm.classList.add('hidden'); authOtpForm.style.display = 'none'; }
-    if (authProfileForm) { authProfileForm.classList.add('hidden'); authProfileForm.style.display = 'none'; }
+    if (authPasscodeLoginForm) { authPasscodeLoginForm.classList.add('hidden'); authPasscodeLoginForm.style.display = 'none'; }
+    if (authPasscodeRegisterForm) { authPasscodeRegisterForm.classList.add('hidden'); authPasscodeRegisterForm.style.display = 'none'; }
+    if (authPasscodeResetForm) { authPasscodeResetForm.classList.add('hidden'); authPasscodeResetForm.style.display = 'none'; }
 
     if (step === 'phone') {
       if (authPhoneForm) {
@@ -523,33 +537,47 @@ document.addEventListener('DOMContentLoaded', () => {
         authPhoneForm.style.display = 'block';
       }
       if (authModalTitle) authModalTitle.textContent = 'Go-Notch Trip Monitor';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Login with your mobile number to access real-time WhatsApp trips';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Login with your mobile number and 4-digit passcode';
       if (authPhoneInput) {
         authPhoneInput.value = '';
         setTimeout(() => authPhoneInput.focus(), 100);
       }
-    } else if (step === 'otp') {
-      if (authOtpForm) {
-        authOtpForm.classList.remove('hidden');
-        authOtpForm.style.display = 'block';
+    } else if (step === 'login') {
+      if (authPasscodeLoginForm) {
+        authPasscodeLoginForm.classList.remove('hidden');
+        authPasscodeLoginForm.style.display = 'block';
       }
-      if (authModalTitle) authModalTitle.textContent = 'Verification Code';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter the 4-digit code sent to your mobile number';
-      if (authOtpInput) {
-        authOtpInput.value = '';
-        setTimeout(() => authOtpInput.focus(), 100);
+      if (authModalTitle) authModalTitle.textContent = 'Passcode Login';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your 4-digit passcode to enter';
+      if (authLoginPasscodeInput) {
+        authLoginPasscodeInput.value = '';
+        setTimeout(() => authLoginPasscodeInput.focus(), 100);
       }
-    } else if (step === 'profile') {
-      if (authProfileForm) {
-        authProfileForm.classList.remove('hidden');
-        authProfileForm.style.display = 'block';
+    } else if (step === 'register') {
+      if (authPasscodeRegisterForm) {
+        authPasscodeRegisterForm.classList.remove('hidden');
+        authPasscodeRegisterForm.style.display = 'block';
       }
-      if (authModalTitle) authModalTitle.textContent = 'Profile Setup';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your username and gender to complete registration';
-      if (authProfileNameInput) {
-        authProfileNameInput.value = '';
-        setTimeout(() => authProfileNameInput.focus(), 100);
+      if (authModalTitle) authModalTitle.textContent = 'Create Account';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Set your username and 4-digit passcode';
+      if (authRegisterNameInput) {
+        authRegisterNameInput.value = '';
+        setTimeout(() => authRegisterNameInput.focus(), 100);
       }
+      if (authRegisterPasscodeInput) authRegisterPasscodeInput.value = '';
+      if (authRegisterConfirmPasscodeInput) authRegisterConfirmPasscodeInput.value = '';
+    } else if (step === 'reset') {
+      if (authPasscodeResetForm) {
+        authPasscodeResetForm.classList.remove('hidden');
+        authPasscodeResetForm.style.display = 'block';
+      }
+      if (authModalTitle) authModalTitle.textContent = 'Reset Passcode';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter and confirm a new 4-digit passcode';
+      if (authResetPasscodeInput) {
+        authResetPasscodeInput.value = '';
+        setTimeout(() => authResetPasscodeInput.focus(), 100);
+      }
+      if (authResetConfirmPasscodeInput) authResetConfirmPasscodeInput.value = '';
     }
     safeCreateIcons();
   }
@@ -616,6 +644,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initGenderPills();
 
+  // Helper to post-login initialization
+  async function handleSuccessfulLogin(user, token) {
+    setStoredUser(user, token);
+    hideAuthModal();
+    await fetchSubscriptionStatus();
+    switchTab('dashboard');
+    loadStats();
+    loadThreads();
+    loadKeywords();
+    loadKeywordAlerts();
+    updateDesktopNotifUI();
+  }
+
   // 1. Phone Form Submit Handler
   if (authPhoneForm) {
     authPhoneForm.addEventListener('submit', async (e) => {
@@ -629,155 +670,197 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       pendingAuthPhone = cleanPhone;
-      if (authOtpDisplayPhone) authOtpDisplayPhone.textContent = `+91 ${cleanPhone.slice(-10)}`;
+      const formattedDisplay = `+91 ${cleanPhone.slice(-10)}`;
+      if (authLoginDisplayPhone) authLoginDisplayPhone.textContent = formattedDisplay;
+      if (authRegisterDisplayPhone) authRegisterDisplayPhone.textContent = formattedDisplay;
+      if (authResetDisplayPhone) authResetDisplayPhone.textContent = formattedDisplay;
 
-      const origBtnHtml = authSendOtpBtn.innerHTML;
-      authSendOtpBtn.disabled = true;
-      authSendOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Sending OTP...</span>`;
+      const submitBtn = authPhoneSubmitBtn || authPhoneForm.querySelector('button[type="submit"]');
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Checking...</span>`;
+      }
 
       try {
-        const res = await apiFetch('/api/auth/send-otp', {
+        const res = await apiFetch('/api/auth/check-phone', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: cleanPhone })
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to send OTP');
+          throw new Error(data.error || 'Failed to verify phone number');
         }
-        showAuthStep('otp');
-      } catch (err) {
-        alert(err.message || 'Error sending OTP. Please check your network and try again.');
-      } finally {
-        authSendOtpBtn.disabled = false;
-        authSendOtpBtn.innerHTML = origBtnHtml;
-        safeCreateIcons();
-      }
-    });
-  }
 
-  // 2. Change Phone Button
-  if (authChangePhoneBtn) {
-    authChangePhoneBtn.addEventListener('click', () => {
-      showAuthStep('phone');
-    });
-  }
-
-  // 3. Resend OTP Button
-  if (authResendOtpBtn) {
-    authResendOtpBtn.addEventListener('click', async () => {
-      if (!pendingAuthPhone) return;
-      authResendOtpBtn.textContent = 'Resending...';
-      try {
-        const res = await apiFetch('/api/auth/send-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          authResendOtpBtn.textContent = 'OTP Sent!';
+        if (data.exists && data.hasPasscode) {
+          if (authLoginUserName) authLoginUserName.textContent = data.name || 'User';
+          showAuthStep('login');
         } else {
-          authResendOtpBtn.textContent = 'Failed to resend';
+          showAuthStep('register');
         }
-        setTimeout(() => { authResendOtpBtn.textContent = "Didn't receive code? Resend OTP"; }, 3000);
-      } catch (e) {
-        authResendOtpBtn.textContent = "Didn't receive code? Resend OTP";
+      } catch (err) {
+        alert(err.message || 'Error checking phone number. Please try again.');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+          safeCreateIcons();
+        }
       }
     });
   }
 
-  // 4. OTP Form Submit Handler
-  if (authOtpForm) {
-    authOtpForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const otp = authOtpInput.value.trim();
+  // Change phone buttons on all steps
+  if (authLoginChangePhoneBtn) authLoginChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
+  if (authRegisterChangePhoneBtn) authRegisterChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
+  if (authResetChangePhoneBtn) authResetChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
+  if (authResetBackToLoginBtn) authResetBackToLoginBtn.addEventListener('click', () => showAuthStep('login'));
+  if (authForgotPasscodeBtn) authForgotPasscodeBtn.addEventListener('click', () => showAuthStep('reset'));
 
-      if (!otp) {
-        alert('Please enter the OTP code.');
+  // Toggle Passcode Visibility in Login
+  if (toggleLoginPasscodeBtn && authLoginPasscodeInput) {
+    toggleLoginPasscodeBtn.addEventListener('click', () => {
+      const isPassword = authLoginPasscodeInput.type === 'password';
+      authLoginPasscodeInput.type = isPassword ? 'text' : 'password';
+      toggleLoginPasscodeBtn.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+      safeCreateIcons();
+    });
+  }
+
+  // 2. Existing User Passcode Login Form Submit Handler
+  if (authPasscodeLoginForm) {
+    authPasscodeLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const passcode = authLoginPasscodeInput ? authLoginPasscodeInput.value.trim() : '';
+
+      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
+        alert('Please enter your 4-digit numeric passcode.');
+        if (authLoginPasscodeInput) authLoginPasscodeInput.focus();
         return;
       }
 
-      const origBtnHtml = authVerifyOtpBtn.innerHTML;
-      authVerifyOtpBtn.disabled = true;
-      authVerifyOtpBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Verifying...</span>`;
+      const origBtnHtml = authPasscodeLoginBtn.innerHTML;
+      authPasscodeLoginBtn.disabled = true;
+      authPasscodeLoginBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Logging in...</span>`;
 
       try {
-        const res = await apiFetch('/api/auth/verify-otp', {
+        const res = await apiFetch('/api/auth/login-passcode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone, otp })
+          body: JSON.stringify({ phone: pendingAuthPhone, passcode })
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Invalid OTP code. Please try again.');
+          if (data.needsPasscodeSetup) {
+            alert('No passcode was set for this account yet. Please set one now.');
+            showAuthStep('reset');
+            return;
+          }
+          throw new Error(data.error || 'Incorrect passcode. Please try again.');
         }
 
-        if (data.isNewUser) {
-          showAuthStep('profile');
-        } else if (data.user) {
-          setStoredUser(data.user, data.token);
-          hideAuthModal();
-          await fetchSubscriptionStatus();
-          switchTab('dashboard');
-          loadStats();
-          loadThreads();
-          loadKeywords();
-          loadKeywordAlerts();
-          updateDesktopNotifUI();
-        }
+        await handleSuccessfulLogin(data.user, data.token);
       } catch (err) {
-        alert(err.message || 'Verification failed. Please enter the correct OTP.');
+        alert(err.message || 'Login failed. Please check your passcode and try again.');
       } finally {
-        authVerifyOtpBtn.disabled = false;
-        authVerifyOtpBtn.innerHTML = origBtnHtml;
+        authPasscodeLoginBtn.disabled = false;
+        authPasscodeLoginBtn.innerHTML = origBtnHtml;
         safeCreateIcons();
       }
     });
   }
 
-  // 5. New User Profile Form Submit Handler
-  if (authProfileForm) {
-    authProfileForm.addEventListener('submit', async (e) => {
+  // 3. New User Registration Form Submit Handler
+  if (authPasscodeRegisterForm) {
+    authPasscodeRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = authProfileNameInput.value.trim();
-      const selectedGenderRadio = document.querySelector('input[name="authGender"]:checked');
+      const name = authRegisterNameInput ? authRegisterNameInput.value.trim() : '';
+      const passcode = authRegisterPasscodeInput ? authRegisterPasscodeInput.value.trim() : '';
+      const confirmPasscode = authRegisterConfirmPasscodeInput ? authRegisterConfirmPasscodeInput.value.trim() : '';
+      const selectedGenderRadio = document.querySelector('input[name="authRegisterGender"]:checked');
       const gender = selectedGenderRadio ? selectedGenderRadio.value : 'Male';
 
       if (!name) {
-        alert('Please enter your username / full name.');
+        alert('Please enter your full name or username.');
         return;
       }
 
-      const origBtnHtml = authCompleteProfileBtn.innerHTML;
-      authCompleteProfileBtn.disabled = true;
-      authCompleteProfileBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Saving Profile...</span>`;
+      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
+        alert('Please enter a 4-digit numeric passcode.');
+        return;
+      }
+
+      if (passcode !== confirmPasscode) {
+        alert('Passcode and Confirm Passcode do not match. Please re-enter.');
+        return;
+      }
+
+      const origBtnHtml = authRegisterSubmitBtn.innerHTML;
+      authRegisterSubmitBtn.disabled = true;
+      authRegisterSubmitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Creating Account...</span>`;
 
       try {
-        const res = await apiFetch('/api/auth/complete-profile', {
+        const res = await apiFetch('/api/auth/register-passcode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone, name, gender })
+          body: JSON.stringify({ phone: pendingAuthPhone, name, gender, passcode })
         });
         const data = await res.json();
-
-        if (res.ok && data.success) {
-          setStoredUser(data.user, data.token);
-          hideAuthModal();
-          await fetchSubscriptionStatus();
-          switchTab('dashboard');
-          loadStats();
-          loadThreads();
-          loadKeywords();
-          loadKeywordAlerts();
-        } else {
-          alert(data.error || 'Failed to save profile. Please try again.');
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to create account');
         }
+
+        await handleSuccessfulLogin(data.user, data.token);
       } catch (err) {
-        alert('Network error. Please try again.');
+        alert(err.message || 'Error creating account. Please try again.');
       } finally {
-        authCompleteProfileBtn.disabled = false;
-        authCompleteProfileBtn.innerHTML = origBtnHtml;
+        authRegisterSubmitBtn.disabled = false;
+        authRegisterSubmitBtn.innerHTML = origBtnHtml;
+        safeCreateIcons();
+      }
+    });
+  }
+
+  // 4. Passcode Reset Form Submit Handler
+  if (authPasscodeResetForm) {
+    authPasscodeResetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const passcode = authResetPasscodeInput ? authResetPasscodeInput.value.trim() : '';
+      const confirmPasscode = authResetConfirmPasscodeInput ? authResetConfirmPasscodeInput.value.trim() : '';
+
+      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
+        alert('Please enter a 4-digit numeric passcode.');
+        return;
+      }
+
+      if (passcode !== confirmPasscode) {
+        alert('Passcode and Confirm Passcode do not match.');
+        return;
+      }
+
+      const origBtnHtml = authResetSubmitBtn.innerHTML;
+      authResetSubmitBtn.disabled = true;
+      authResetSubmitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Updating Passcode...</span>`;
+
+      try {
+        const res = await apiFetch('/api/auth/reset-passcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pendingAuthPhone, passcode })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to reset passcode');
+        }
+
+        alert('✅ Passcode updated successfully!');
+        await handleSuccessfulLogin(data.user, data.token);
+      } catch (err) {
+        alert(err.message || 'Error resetting passcode. Please try again.');
+      } finally {
+        authResetSubmitBtn.disabled = false;
+        authResetSubmitBtn.innerHTML = origBtnHtml;
         safeCreateIcons();
       }
     });
@@ -788,6 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentUser) return;
     if (editProfilePhone) editProfilePhone.value = `+91 ${(currentUser.phone || '').slice(-10)}`;
     if (editProfileNameInput) editProfileNameInput.value = currentUser.name || '';
+    if (editProfilePasscodeInput) editProfilePasscodeInput.value = '';
     
     const targetGender = currentUser.gender || 'Male';
     document.querySelectorAll('input[name="editGender"]').forEach(radio => {
@@ -818,11 +902,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!currentUser) return;
 
       const name = editProfileNameInput ? editProfileNameInput.value.trim() : '';
+      const passcode = editProfilePasscodeInput ? editProfilePasscodeInput.value.trim() : '';
       const selectedRadio = document.querySelector('input[name="editGender"]:checked');
       const gender = selectedRadio ? selectedRadio.value : (currentUser.gender || 'Male');
 
       if (!name) {
         alert('Please enter a username or full name.');
+        return;
+      }
+
+      if (passcode && (!/^\d{4}$/.test(passcode))) {
+        alert('New passcode must be exactly 4 numeric digits.');
         return;
       }
 
@@ -834,10 +924,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
+        const payload = { phone: currentUser.phone, name, gender };
+        if (passcode) payload.passcode = passcode;
+
         const res = await apiFetch('/api/auth/update-profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: currentUser.phone, name, gender })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success && data.user) {

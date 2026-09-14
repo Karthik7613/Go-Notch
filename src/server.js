@@ -30,6 +30,8 @@ const {
   findUserByPhone,
   createUser,
   updateUserProfile,
+  updateUserPasscode,
+  verifyUserPasscode,
   saveOtp,
   verifyOtp,
   getUserSubscription,
@@ -83,8 +85,8 @@ io.on('connection', (socket) => {
   socket.emit('status_update', getStatus());
 });
 
-// Authentication API Routes (Mobile Number + OTP + Profile Setup)
-app.post('/api/auth/send-otp', (req, res) => {
+// Authentication API Routes (Mobile Number + 4-Digit Passcode)
+app.post('/api/auth/check-phone', (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) {
@@ -96,77 +98,117 @@ app.post('/api/auth/send-otp', (req, res) => {
     }
 
     const existingUser = findUserByPhone(cleanPhone);
-    const isNewUser = !existingUser;
-    
-    // Generate 4-digit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    saveOtp(cleanPhone, otp, 600); // 10 mins expiry
-
-    console.log(`🔑 OTP generated for ${cleanPhone}: ${otp} (isNewUser: ${isNewUser})`);
+    const exists = Boolean(existingUser);
+    const hasPasscode = Boolean(existingUser && existingUser.passcode);
 
     res.json({
       success: true,
       phone: cleanPhone,
-      isNewUser,
-      message: isNewUser ? 'OTP sent for registration' : 'OTP sent for login'
+      exists,
+      hasPasscode,
+      name: existingUser?.name || ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/verify-otp', (req, res) => {
+app.post('/api/auth/login-passcode', (req, res) => {
   try {
-    const { phone, otp } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ error: 'Mobile number and OTP are required' });
+    const { phone, passcode } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
     }
-    const cleanPhone = String(phone).replace(/\D/g, '');
-    const isValid = verifyOtp(cleanPhone, otp);
-    
-    if (!isValid) {
-      return res.status(400).json({ error: 'Invalid or expired OTP. Please try again.' });
+    if (!passcode || !/^\d{4}$/.test(String(passcode).trim())) {
+      return res.status(400).json({ error: 'Please enter a valid 4-digit passcode' });
     }
 
-    const existingUser = findUserByPhone(cleanPhone);
-    if (existingUser) {
-      const token = `tok_${cleanPhone}_${Date.now()}`;
-      return res.json({
-        success: true,
-        isNewUser: false,
-        user: existingUser,
-        token
-      });
-    } else {
-      return res.json({
-        success: true,
-        isNewUser: true,
-        phone: cleanPhone,
-        message: 'OTP verified. Please complete your profile.'
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const user = findUserByPhone(cleanPhone);
+
+    if (!user) {
+      return res.status(404).json({ error: 'No account found for this mobile number. Please register.' });
+    }
+
+    if (!user.passcode) {
+      return res.status(400).json({
+        error: 'No passcode set for this account. Please set a new 4-digit passcode.',
+        needsPasscodeSetup: true
       });
     }
+
+    if (String(user.passcode).trim() !== String(passcode).trim()) {
+      return res.status(401).json({ error: 'Incorrect 4-digit passcode. Please try again.' });
+    }
+
+    const token = `tok_${cleanPhone}_${Date.now()}`;
+    res.json({
+      success: true,
+      user,
+      token
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/complete-profile', (req, res) => {
+app.post('/api/auth/register-passcode', (req, res) => {
   try {
-    const { phone, name, gender } = req.body;
+    const { phone, name, gender, passcode } = req.body;
     if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required' });
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Username / Full Name is required' });
+      return res.status(400).json({ error: 'Full name / username is required' });
+    }
+    if (!passcode || !/^\d{4}$/.test(String(passcode).trim())) {
+      return res.status(400).json({ error: 'Please enter a 4-digit numeric passcode' });
     }
 
-    const cleanPhone = String(phone).replace(/\D/g, '');
-    const user = createUser(cleanPhone, name.trim(), gender || 'Male');
+    const cleanPasscode = String(passcode).trim();
+    const user = createUser(cleanPhone, name.trim(), gender || 'Male', cleanPasscode);
     const token = `tok_${cleanPhone}_${Date.now()}`;
 
     res.json({
       success: true,
       user,
+      token
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/reset-passcode', (req, res) => {
+  try {
+    const { phone, passcode } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    if (!passcode || !/^\d{4}$/.test(String(passcode).trim())) {
+      return res.status(400).json({ error: 'Please enter a valid 4-digit numeric passcode' });
+    }
+
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanPasscode = String(passcode).trim();
+
+    const existingUser = findUserByPhone(cleanPhone);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Account not found. Please register.' });
+    }
+
+    updateUserPasscode(cleanPhone, cleanPasscode);
+    const updatedUser = findUserByPhone(cleanPhone);
+    const token = `tok_${cleanPhone}_${Date.now()}`;
+
+    res.json({
+      success: true,
+      message: 'Passcode updated successfully',
+      user: updatedUser,
       token
     });
   } catch (err) {
@@ -192,11 +234,11 @@ app.get('/api/auth/me', (req, res) => {
 
 app.post('/api/auth/update-profile', (req, res) => {
   try {
-    const { phone, name, gender } = req.body;
+    const { phone, name, gender, passcode } = req.body;
     if (!phone) {
       return res.status(400).json({ error: 'Phone identifier required' });
     }
-    const updated = updateUserProfile(phone, name, gender);
+    const updated = updateUserProfile(phone, name, gender, passcode);
     res.json({ success: true, user: updated });
   } catch (err) {
     res.status(500).json({ error: err.message });

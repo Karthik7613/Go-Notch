@@ -58,7 +58,7 @@
 </head>
 <body class="bg-slate-100 dark:bg-wa-dark text-slate-800 dark:text-slate-100 h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200">
 
-  <!-- Fullscreen User Login / OTP / Profile Setup Screen (Default entry point) -->
+  <!-- Fullscreen User Login / 4-Digit Passcode / Profile Setup Screen (Default entry point) -->
   <div id="authModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative transition-all">
       
@@ -68,7 +68,7 @@
           <i data-lucide="compass" class="w-8 h-8"></i>
         </div>
         <h2 id="authModalTitle" class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Go-Notch Trip Monitor</h2>
-        <p id="authModalSubtitle" class="text-slate-500 dark:text-slate-400 text-xs">Login with your mobile number to access real-time WhatsApp trips</p>
+        <p id="authModalSubtitle" class="text-slate-500 dark:text-slate-400 text-xs">Login with your mobile number and 4-digit passcode</p>
       </div>
 
       <!-- STEP 1: MOBILE NUMBER INPUT -->
@@ -81,82 +81,147 @@
             </span>
             <input type="tel" id="authPhoneInput" maxlength="10" placeholder="Enter 10-digit mobile number" class="w-full bg-transparent px-3.5 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" autofocus required>
           </div>
-          <p class="text-[11px] text-slate-400">If you are new, we will guide you through profile setup after verification.</p>
+          <p class="text-[11px] text-slate-400">Enter your number to login with your 4-digit passcode or create a new account.</p>
         </div>
 
-        <button type="submit" id="authSendOtpBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
-          <span>Get Verification Code</span>
+        <button type="submit" id="authPhoneSubmitBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
+          <span>Continue</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
         </button>
       </form>
 
-      <!-- STEP 2: OTP VERIFICATION -->
-      <form id="authOtpForm" class="hidden space-y-4 text-left">
+      <!-- STEP 2A: EXISTING USER 4-DIGIT PASSCODE LOGIN -->
+      <form id="authPasscodeLoginForm" class="hidden space-y-4 text-left">
         <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 rounded-xl flex items-center justify-between text-xs">
           <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
             <i data-lucide="smartphone" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
-            <span>Sent to <strong id="authOtpDisplayPhone">+91 XXXXXXXXXX</strong></span>
+            <span>Mobile: <strong id="authLoginDisplayPhone">+91 XXXXXXXXXX</strong></span>
           </div>
-          <button type="button" id="authChangePhoneBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Change</button>
+          <button type="button" id="authLoginChangePhoneBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Change</button>
+        </div>
+
+        <div class="text-center py-1">
+          <p class="text-xs text-slate-500 dark:text-slate-400">Welcome back, <span id="authLoginUserName" class="font-bold text-slate-800 dark:text-white">User</span>! Enter your 4-digit passcode.</p>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Enter 4-Digit OTP</label>
-          <input type="text" id="authOtpInput" maxlength="6" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center text-xl font-semibold tracking-[0.4em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">4-Digit Passcode</label>
+          <div class="relative">
+            <input type="password" id="authLoginPasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+            <button type="button" id="toggleLoginPasscodeBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
-        <button type="submit" id="authVerifyOtpBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
-          <span>Verify & Continue</span>
-          <i data-lucide="check" class="w-4 h-4"></i>
+        <button type="submit" id="authPasscodeLoginBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
+          <span>Login to Go-Notch</span>
+          <i data-lucide="log-in" class="w-4 h-4"></i>
         </button>
 
         <div class="text-center pt-1">
-          <button type="button" id="authResendOtpBtn" class="text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 transition">
-            Didn't receive code? Resend OTP
+          <button type="button" id="authForgotPasscodeBtn" class="text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 transition">
+            Forgot Passcode? Reset Passcode
           </button>
         </div>
       </form>
 
-      <!-- STEP 3: NEW USER PROFILE SETUP -->
-      <form id="authProfileForm" class="hidden space-y-4 text-left">
-        <div class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+      <!-- STEP 2B: NEW USER REGISTRATION & 4-DIGIT PASSCODE SETUP -->
+      <form id="authPasscodeRegisterForm" class="hidden space-y-4 text-left">
+        <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
+            <i data-lucide="user-plus" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
+            <span>Mobile: <strong id="authRegisterDisplayPhone">+91 XXXXXXXXXX</strong></span>
+          </div>
+          <button type="button" id="authRegisterChangePhoneBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Change</button>
+        </div>
+
+        <div class="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
           <i data-lucide="sparkles" class="w-4 h-4 text-amber-500 flex-shrink-0"></i>
-          <span>Welcome! Set up your profile to start monitoring trips.</span>
+          <span>Welcome! Set up your username and a 4-digit passcode.</span>
         </div>
 
         <div class="space-y-1.5">
           <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Full Name / Username</label>
           <div class="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition">
             <i data-lucide="user" class="w-4 h-4 text-slate-400 mr-2.5"></i>
-            <input type="text" id="authProfileNameInput" placeholder="e.g. John Doe / Captain Alex" class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" required>
+            <input type="text" id="authRegisterNameInput" placeholder="e.g. John Doe / Captain Alex" class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none" required>
           </div>
         </div>
 
         <div class="space-y-1.5">
           <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Gender</label>
           <div class="grid grid-cols-3 gap-2">
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
-              <input type="radio" name="authGender" value="Male" checked class="hidden gender-radio">
-              <i data-lucide="user-check" class="w-5 h-5 text-slate-500 mb-1"></i>
+            <label class="gender-pill-label flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none active">
+              <input type="radio" name="authRegisterGender" value="Male" checked class="hidden gender-radio">
+              <i data-lucide="user-check" class="w-4 h-4 text-slate-500 mb-0.5"></i>
               <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Male</span>
             </label>
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
-              <input type="radio" name="authGender" value="Female" class="hidden gender-radio">
-              <i data-lucide="heart" class="w-5 h-5 text-slate-500 mb-1"></i>
+            <label class="gender-pill-label flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
+              <input type="radio" name="authRegisterGender" value="Female" class="hidden gender-radio">
+              <i data-lucide="heart" class="w-4 h-4 text-slate-500 mb-0.5"></i>
               <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Female</span>
             </label>
-            <label class="gender-pill-label flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
-              <input type="radio" name="authGender" value="Other" class="hidden gender-radio">
-              <i data-lucide="users" class="w-5 h-5 text-slate-500 mb-1"></i>
+            <label class="gender-pill-label flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:border-blue-500 transition text-center select-none">
+              <input type="radio" name="authRegisterGender" value="Other" class="hidden gender-radio">
+              <i data-lucide="users" class="w-4 h-4 text-slate-500 mb-0.5"></i>
               <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Other</span>
             </label>
           </div>
         </div>
 
-        <button type="submit" id="authCompleteProfileBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
-          <span>Complete & Enter App</span>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Set 4-Digit Passcode</label>
+            <input type="password" id="authRegisterPasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-center text-lg font-bold tracking-[0.3em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Confirm Passcode</label>
+            <input type="password" id="authRegisterConfirmPasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-center text-lg font-bold tracking-[0.3em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+          </div>
+        </div>
+
+        <button type="submit" id="authRegisterSubmitBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
+          <span>Create Account & Enter App</span>
           <i data-lucide="check-circle" class="w-4 h-4"></i>
         </button>
+      </form>
+
+      <!-- STEP 2C: RESET 4-DIGIT PASSCODE -->
+      <form id="authPasscodeResetForm" class="hidden space-y-4 text-left">
+        <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium">
+            <i data-lucide="key" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
+            <span>Reset for <strong id="authResetDisplayPhone">+91 XXXXXXXXXX</strong></span>
+          </div>
+          <button type="button" id="authResetChangePhoneBtn" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Change</button>
+        </div>
+
+        <div class="text-center py-1">
+          <p class="text-xs text-slate-500 dark:text-slate-400">Set a new 4-digit passcode for your account</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">New 4-Digit Passcode</label>
+            <input type="password" id="authResetPasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-center text-lg font-bold tracking-[0.3em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Confirm Passcode</label>
+            <input type="password" id="authResetConfirmPasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="• • • •" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-center text-lg font-bold tracking-[0.3em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition" required>
+          </div>
+        </div>
+
+        <button type="submit" id="authResetSubmitBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
+          <span>Save Passcode & Login</span>
+          <i data-lucide="check" class="w-4 h-4"></i>
+        </button>
+
+        <div class="text-center pt-1">
+          <button type="button" id="authResetBackToLoginBtn" class="text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 transition">
+            Back to Passcode Login
+          </button>
+        </div>
       </form>
 
     </div>
@@ -171,7 +236,7 @@
 
       <div class="text-left space-y-1">
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Edit Profile Details</h3>
-        <p class="text-xs text-slate-400">Update your username or gender preferences</p>
+        <p class="text-xs text-slate-400">Update your username, gender, or login passcode</p>
       </div>
 
       <form id="editProfileForm" class="space-y-4 text-left">
@@ -183,6 +248,11 @@
         <div class="space-y-1.5">
           <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Username / Full Name</label>
           <input type="text" id="editProfileNameInput" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500" required>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Change 4-Digit Passcode (Optional)</label>
+          <input type="password" id="editProfilePasscodeInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="Leave blank to keep unchanged" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500">
         </div>
 
         <div class="space-y-1.5">

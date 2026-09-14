@@ -75,6 +75,7 @@ function initDb() {
       phone TEXT UNIQUE NOT NULL,
       name TEXT,
       gender TEXT,
+      passcode TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -124,6 +125,9 @@ function initDb() {
   } catch (e) {}
   try {
     db.exec(`ALTER TABLE keywords ADD COLUMN type TEXT DEFAULT 'include';`);
+  } catch (e) {}
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN passcode TEXT;`);
   } catch (e) {}
   // Migration for keywords table if it had old column-level UNIQUE constraint
   try {
@@ -893,20 +897,21 @@ function findUserByPhone(phone) {
   }
 }
 
-function createUser(phone, name, gender = 'Male') {
+function createUser(phone, name, gender = 'Male', passcode = '') {
   if (!phone) return null;
   const cleanPhone = String(phone).replace(/\D/g, '');
+  const cleanPasscode = passcode ? String(passcode).trim() : null;
   const now = Math.floor(Date.now() / 1000);
   try {
     const existing = findUserByPhone(cleanPhone);
     if (existing) {
-      db.prepare('UPDATE users SET name = ?, gender = ?, updated_at = ? WHERE id = ?')
-        .run(name || existing.name, gender || existing.gender, now, existing.id);
+      db.prepare('UPDATE users SET name = ?, gender = ?, passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
+        .run(name || existing.name, gender || existing.gender, cleanPasscode, now, existing.id);
       ensureUserHasKeywords(cleanPhone);
       return findUserByPhone(cleanPhone);
     }
-    const info = db.prepare('INSERT INTO users (phone, name, gender, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-      .run(cleanPhone, name || 'User', gender || 'Male', now, now);
+    const info = db.prepare('INSERT INTO users (phone, name, gender, passcode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(cleanPhone, name || 'User', gender || 'Male', cleanPasscode, now, now);
     ensureUserHasKeywords(cleanPhone);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
   } catch (e) {
@@ -915,18 +920,43 @@ function createUser(phone, name, gender = 'Male') {
   }
 }
 
-function updateUserProfile(phone, name, gender) {
-  if (!phone) return null;
+function updateUserPasscode(phone, passcode) {
+  if (!phone || !passcode) return false;
   const cleanPhone = String(phone).replace(/\D/g, '');
+  const cleanPasscode = String(passcode).trim();
   const now = Math.floor(Date.now() / 1000);
   try {
     const existing = findUserByPhone(cleanPhone);
+    if (!existing) return false;
+    db.prepare('UPDATE users SET passcode = ?, updated_at = ? WHERE id = ?')
+      .run(cleanPasscode, now, existing.id);
+    return true;
+  } catch (e) {
+    console.error('updateUserPasscode error:', e.message);
+    return false;
+  }
+}
+
+function verifyUserPasscode(phone, passcode) {
+  if (!phone || !passcode) return false;
+  const user = findUserByPhone(phone);
+  if (!user || !user.passcode) return false;
+  return String(user.passcode).trim() === String(passcode).trim();
+}
+
+function updateUserProfile(phone, name, gender, passcode) {
+  if (!phone) return null;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const now = Math.floor(Date.now() / 1000);
+  const cleanPasscode = passcode ? String(passcode).trim() : null;
+  try {
+    const existing = findUserByPhone(cleanPhone);
     if (existing) {
-      db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), updated_at = ? WHERE id = ?')
-        .run(name || null, gender || null, now, existing.id);
+      db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
+        .run(name || null, gender || null, cleanPasscode, now, existing.id);
       return findUserByPhone(cleanPhone);
     }
-    return createUser(cleanPhone, name, gender);
+    return createUser(cleanPhone, name, gender, passcode);
   } catch (e) {
     console.error('updateUserProfile error:', e.message);
     return null;
@@ -1104,6 +1134,8 @@ module.exports = {
   findUserByPhone,
   createUser,
   updateUserProfile,
+  updateUserPasscode,
+  verifyUserPasscode,
   saveOtp,
   verifyOtp,
   getUserSubscription,

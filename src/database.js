@@ -883,14 +883,28 @@ function getKeywordAlerts(limit = 100, userPhone = '') {
   }
 }
 
+function normalizePhoneDigits(phone) {
+  if (!phone) return '';
+  const clean = String(phone).replace(/\D/g, '');
+  return clean.length >= 10 ? clean.slice(-10) : clean;
+}
+
 function findUserByPhone(phone) {
   if (!phone) return null;
-  const cleanPhone = String(phone).replace(/\D/g, '');
-  const p10 = cleanPhone.length === 12 && cleanPhone.startsWith('91') ? cleanPhone.slice(2) : cleanPhone;
-  const p12 = p10.length === 10 ? `91${p10}` : cleanPhone;
+  const rawStr = String(phone).trim();
+  const cleanPhone = rawStr.replace(/\D/g, '');
+  if (!cleanPhone) return null;
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+  const p12 = `91${p10}`;
+
   try {
-    return db.prepare('SELECT * FROM users WHERE phone = ? OR phone = ? OR phone = ? OR phone = ? OR phone = ?')
-      .get(cleanPhone, p10, p12, `+${p12}`, `+${p10}`);
+    const user = db.prepare(`
+      SELECT * FROM users 
+      WHERE phone = ? OR phone = ? OR phone = ? OR phone = ? OR phone = ? OR phone = ?
+         OR phone LIKE ? OR phone LIKE ?
+      ORDER BY id DESC LIMIT 1
+    `).get(cleanPhone, p10, p12, `+${p12}`, `+${p10}`, rawStr, `%${p10}`, `%${cleanPhone}`);
+    return user || null;
   } catch (e) {
     console.error('findUserByPhone error:', e.message);
     return null;
@@ -899,21 +913,23 @@ function findUserByPhone(phone) {
 
 function createUser(phone, name, gender = 'Male', passcode = '') {
   if (!phone) return null;
-  const cleanPhone = String(phone).replace(/\D/g, '');
+  const rawStr = String(phone).trim();
+  const cleanPhone = rawStr.replace(/\D/g, '');
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
   const cleanPasscode = passcode ? String(passcode).trim() : null;
   const now = Math.floor(Date.now() / 1000);
   try {
     const existing = findUserByPhone(cleanPhone);
     if (existing) {
-      db.prepare('UPDATE users SET name = ?, gender = ?, passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
-        .run(name || existing.name, gender || existing.gender, cleanPasscode, now, existing.id);
-      ensureUserHasKeywords(cleanPhone);
-      return findUserByPhone(cleanPhone);
+      db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
+        .run(name || null, gender || null, cleanPasscode, now, existing.id);
+      ensureUserHasKeywords(existing.phone || p10);
+      return findUserByPhone(existing.phone || p10);
     }
     const info = db.prepare('INSERT INTO users (phone, name, gender, passcode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(cleanPhone, name || 'User', gender || 'Male', cleanPasscode, now, now);
-    ensureUserHasKeywords(cleanPhone);
-    return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+      .run(p10, name || 'User', gender || 'Male', cleanPasscode, now, now);
+    ensureUserHasKeywords(p10);
+    return findUserByPhone(p10);
   } catch (e) {
     console.error('createUser error:', e.message);
     return null;
@@ -946,7 +962,9 @@ function verifyUserPasscode(phone, passcode) {
 
 function updateUserProfile(phone, name, gender, passcode) {
   if (!phone) return null;
-  const cleanPhone = String(phone).replace(/\D/g, '');
+  const rawStr = String(phone).trim();
+  const cleanPhone = rawStr.replace(/\D/g, '');
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
   const now = Math.floor(Date.now() / 1000);
   const cleanPasscode = passcode ? String(passcode).trim() : null;
   try {
@@ -954,9 +972,9 @@ function updateUserProfile(phone, name, gender, passcode) {
     if (existing) {
       db.prepare('UPDATE users SET name = COALESCE(?, name), gender = COALESCE(?, gender), passcode = COALESCE(?, passcode), updated_at = ? WHERE id = ?')
         .run(name || null, gender || null, cleanPasscode, now, existing.id);
-      return findUserByPhone(cleanPhone);
+      return findUserByPhone(existing.phone || p10);
     }
-    return createUser(cleanPhone, name, gender, passcode);
+    return createUser(p10, name, gender, passcode);
   } catch (e) {
     console.error('updateUserProfile error:', e.message);
     return null;
@@ -1001,15 +1019,16 @@ function verifyOtp(phone, otp) {
 function getUserSubscription(phone) {
   if (!phone) return { is_subscribed: false, status: 'inactive' };
   const cleanPhone = String(phone).replace(/\D/g, '');
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
   const now = Math.floor(Date.now() / 1000);
 
   try {
     const row = db.prepare(`
       SELECT * FROM subscriptions 
-      WHERE user_phone = ? 
+      WHERE user_phone = ? OR user_phone = ? OR user_phone = ? OR user_phone LIKE ?
       ORDER BY expires_at DESC, id DESC 
       LIMIT 1
-    `).get(cleanPhone);
+    `).get(cleanPhone, p10, `91${p10}`, `%${p10}`);
 
     if (!row) {
       return {
@@ -1046,7 +1065,8 @@ function getUserSubscription(phone) {
 }
 
 function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice = 49, days = 30, paymentId = '', orderId = '' } = {}) {
-  const cleanPhone = String(phone).replace(/\D/g, '');
+  const rawPhone = String(phone).replace(/\D/g, '');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
   if (!cleanPhone) throw new Error('Phone number is required for subscription');
 
   const now = Math.floor(Date.now() / 1000);
@@ -1076,7 +1096,8 @@ function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice
 }
 
 function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amount = 4900, currency = 'INR', status = 'created', method = 'razorpay' }) {
-  const cleanPhone = String(userPhone).replace(/\D/g, '');
+  const rawPhone = String(userPhone).replace(/\D/g, '');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
   const now = Math.floor(Date.now() / 1000);
 
   try {
@@ -1100,8 +1121,13 @@ function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amo
 function getPaymentHistory(phone) {
   if (!phone) return [];
   const cleanPhone = String(phone).replace(/\D/g, '');
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
   try {
-    return db.prepare('SELECT * FROM payments WHERE user_phone = ? ORDER BY created_at DESC LIMIT 50').all(cleanPhone);
+    return db.prepare(`
+      SELECT * FROM payments 
+      WHERE user_phone = ? OR user_phone = ? OR user_phone = ? OR user_phone LIKE ?
+      ORDER BY created_at DESC LIMIT 50
+    `).all(cleanPhone, p10, `91${p10}`, `%${p10}`);
   } catch (e) {
     console.error('getPaymentHistory error:', e.message);
     return [];

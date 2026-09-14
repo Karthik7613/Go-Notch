@@ -245,7 +245,7 @@ app.post('/api/auth/update-profile', (req, res) => {
   }
 });
 
-// Subscription & Razorpay Payment API Routes (₹49/month Plan)
+// Subscription & Razorpay Payment API Routes (₹2/month Plan)
 app.get('/api/subscription/status', (req, res) => {
   try {
     const phone = req.query.phone || req.headers['x-user-phone'];
@@ -268,12 +268,12 @@ app.get('/api/subscription/status', (req, res) => {
 
 app.post('/api/subscription/create-order', async (req, res) => {
   try {
-    const { phone, planName = 'Monthly Pro', amount = 49 } = req.body;
+    const { phone, planName = 'Monthly Pro', amount = 2 } = req.body;
     if (!phone) {
       return res.status(400).json({ error: 'User phone is required to create subscription order' });
     }
     const cleanPhone = String(phone).replace(/\D/g, '');
-    const amountInPaise = Math.round(Number(amount) * 100) || 4900;
+    const amountInPaise = Math.round(Number(amount) * 100) || 200;
     const keyId = process.env.RAZORPAY_KEY_ID || RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET;
 
@@ -361,7 +361,7 @@ app.post('/api/subscription/verify', (req, res) => {
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       signature: razorpay_signature,
-      amount: 4900,
+      amount: 200,
       status: 'captured',
       method: 'razorpay'
     });
@@ -369,7 +369,7 @@ app.post('/api/subscription/verify', (req, res) => {
     // Activate 30-Day Subscription
     const subscription = createOrUpdateSubscription(cleanPhone, {
       planName: 'Monthly Pro',
-      planPrice: 49,
+      planPrice: 2,
       days: 30,
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id

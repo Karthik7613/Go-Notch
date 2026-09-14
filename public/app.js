@@ -3286,7 +3286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = new Date(expiresAt * 1000);
         dashboardExpiryDate.textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       } else {
-        dashboardExpiryDate.textContent = 'No Active Plan (₹49/mo)';
+        dashboardExpiryDate.textContent = 'No Active Plan (₹2/mo)';
       }
     }
 
@@ -3299,7 +3299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dashboardPayBtnText) {
-      dashboardPayBtnText.textContent = isSub ? 'Renew / Extend (+30 Days)' : 'Subscribe Now (₹49/mo)';
+      dashboardPayBtnText.textContent = isSub ? 'Renew / Extend (+30 Days)' : 'Subscribe Now (₹2/mo)';
     }
 
     // Update Stats Hub
@@ -3386,7 +3386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (planDetailsRenewBtnText) {
-      planDetailsRenewBtnText.textContent = isSub ? 'Renew & Extend (+30 Days)' : 'Subscribe Plan Now (₹49/mo)';
+      planDetailsRenewBtnText.textContent = isSub ? 'Renew & Extend (+30 Days)' : 'Subscribe Plan Now (₹2/mo)';
     }
 
     renderPlanDetailsPayments();
@@ -3410,7 +3410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="text-center py-10 text-slate-400 text-xs space-y-2">
               <i data-lucide="receipt" class="w-8 h-8 mx-auto opacity-40 text-slate-400"></i>
               <p class="font-medium text-slate-600 dark:text-slate-300">No Payment History Yet</p>
-              <p class="text-[11px] text-slate-400">Complete your first ₹49 subscription via Razorpay to view your invoices here.</p>
+              <p class="text-[11px] text-slate-400">Complete your first ₹2 subscription via Razorpay to view your invoices here.</p>
             </div>
           `;
         } else {
@@ -3492,7 +3492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function launchRazorpayCheckout(amount = 49, planName = 'Monthly Pro') {
+  async function launchRazorpayCheckout(amount = 2, planName = 'Monthly Pro') {
     if (!currentUser || !currentUser.phone) {
       showAuthStep('phone');
       return;
@@ -3528,7 +3528,7 @@ document.addEventListener('DOMContentLoaded', () => {
         amount: data.order.amount,
         currency: data.order.currency || 'INR',
         name: 'Go-Notch Trip Monitor',
-        description: '30-Day Pro Subscription - ₹49/mo',
+        description: '30-Day Pro Subscription - ₹2/mo',
         image: '/manifest.json',
         order_id: data.order.id,
         prefill: {
@@ -3616,7 +3616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (planDetailsRenewBtn) {
     planDetailsRenewBtn.addEventListener('click', () => {
-      launchRazorpayCheckout(49);
+      launchRazorpayCheckout(2);
     });
   }
 
@@ -3651,7 +3651,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (dashboardPayNowBtn) {
-    dashboardPayNowBtn.addEventListener('click', () => launchRazorpayCheckout(49));
+    dashboardPayNowBtn.addEventListener('click', () => launchRazorpayCheckout(2));
   }
   if (dashboardRefreshBtn) {
     dashboardRefreshBtn.addEventListener('click', () => {
@@ -3678,7 +3678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   if (paywallPayWithRazorpayBtn) {
-    paywallPayWithRazorpayBtn.addEventListener('click', () => launchRazorpayCheckout(49));
+    paywallPayWithRazorpayBtn.addEventListener('click', () => launchRazorpayCheckout(2));
   }
 
   // Initial Auth & Data Load

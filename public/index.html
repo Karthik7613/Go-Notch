@@ -436,7 +436,7 @@
               <div>
                 <h2 id="dashboardPlanTitle" class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-baseline gap-2">
                   <span>Monthly Pro Plan</span>
-                  <span class="text-base font-semibold text-blue-400">₹49<span class="text-xs font-normal text-slate-300">/mo</span></span>
+                  <span class="text-base font-semibold text-blue-400">₹2<span class="text-xs font-normal text-slate-300">/mo</span></span>
                 </h2>
                 <p id="dashboardPlanValidityText" class="text-xs text-slate-300 mt-1">
                   Valid until: <strong id="dashboardExpiryDate" class="text-white font-mono font-medium">Loading...</strong>
@@ -466,7 +466,7 @@
             <div class="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
               <button id="dashboardPayNowBtn" class="px-5 py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
                 <i data-lucide="credit-card" class="w-4 h-4"></i>
-                <span id="dashboardPayBtnText">Renew / Extend Plan (₹49)</span>
+                <span id="dashboardPayBtnText">Renew / Extend Plan (₹2)</span>
               </button>
             </div>
 
@@ -478,22 +478,20 @@
           
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">WhatsApp</span>
-              <i data-lucide="message-circle" class="w-4 h-4 text-blue-500"></i>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">WhatsApp Status</span>
+              <span id="dashboardStatWA" class="inline-flex w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             </div>
-            <p id="dashboardStatWA" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Checking...</p>
-            <p id="dashboardStatWADesc" class="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Live Monitoring
-            </p>
+            <p id="dashboardStatWADesc" class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Connecting...</p>
+            <p class="text-[10px] text-slate-400 font-medium">Click to Scan QR</p>
           </div>
 
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
             <div class="flex items-center justify-between text-slate-400">
-              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Active Rules</span>
-              <i data-lucide="tags" class="w-4 h-4 text-indigo-500"></i>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Active Keywords</span>
+              <i data-lucide="key" class="w-4 h-4 text-blue-500"></i>
             </div>
             <p id="dashboardStatKeywords" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</p>
-            <p class="text-[10px] text-slate-400">Include & Exclude</p>
+            <p class="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Includes & Excludes</p>
           </div>
 
           <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-1">
@@ -510,7 +508,7 @@
               <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Plan Rate</span>
               <i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i>
             </div>
-            <p class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">₹49<span class="text-xs font-normal text-slate-400">/mo</span></p>
+            <p class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">₹2<span class="text-xs font-normal text-slate-400">/mo</span></p>
             <p class="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Pro Unlocked</p>
           </div>
 
@@ -1055,7 +1053,7 @@
                 <p class="text-xs text-slate-300 mt-0.5">Automated WhatsApp keyword monitoring & instant alerts</p>
               </div>
               <div class="text-left sm:text-right">
-                <div class="text-2xl sm:text-3xl font-bold text-blue-400 font-mono">₹49<span class="text-xs font-normal text-slate-300"> / month</span></div>
+                <div class="text-2xl sm:text-3xl font-bold text-blue-400 font-mono">₹2<span class="text-xs font-normal text-slate-300"> / month</span></div>
                 <div class="text-[11px] text-slate-400 font-medium">30-Day Validity Cycle</div>
               </div>
             </div>
@@ -1120,7 +1118,7 @@
             <div class="pt-2 flex flex-col sm:flex-row gap-3">
               <button id="planDetailsRenewBtn" class="flex-1 px-6 py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer">
                 <i data-lucide="credit-card" class="w-4 h-4"></i>
-                <span id="planDetailsRenewBtnText">Renew / Extend Subscription (₹49)</span>
+                <span id="planDetailsRenewBtnText">Renew / Extend Subscription (₹2)</span>
               </button>
             </div>
 
@@ -1448,7 +1446,7 @@
         </div>
         <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Activate Plan to Connect WhatsApp</h2>
         <p class="text-xs text-slate-300 max-w-sm mx-auto">
-          Please subscribe to the <strong class="text-blue-400 font-semibold">₹49/month plan</strong> to link your WhatsApp account, scan QR code, and receive real-time match alerts.
+          Please subscribe to the <strong class="text-blue-400 font-semibold">₹2/month plan</strong> to link your WhatsApp account, scan QR code, and receive real-time match alerts.
         </p>
       </div>
 
@@ -1462,7 +1460,7 @@
             <p class="text-[11px] text-slate-500 dark:text-slate-400">Full 30-day unmetered access</p>
           </div>
           <div class="text-right">
-            <p class="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 font-mono">₹49</p>
+            <p class="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 font-mono">₹2</p>
             <span class="text-[10px] font-medium text-slate-400">/ 30 Days</span>
           </div>
         </div>
@@ -1495,7 +1493,7 @@
         <div class="space-y-2 pt-2">
           <button id="paywallPayWithRazorpayBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
             <i data-lucide="shield-check" class="w-4 h-4"></i>
-            <span>Pay ₹49 & Activate Instant Access</span>
+            <span>Pay ₹2 & Activate Instant Access</span>
           </button>
         </div>
 

@@ -1050,7 +1050,7 @@ function getUserSubscription(phone) {
       id: row.id,
       user_phone: row.user_phone,
       plan_name: row.plan_name || 'Monthly Pro',
-      plan_price: row.plan_price || 49,
+      plan_price: row.plan_price || 2,
       status: isActive ? 'active' : 'expired',
       started_at: row.started_at,
       expires_at: row.expires_at,
@@ -1064,7 +1064,7 @@ function getUserSubscription(phone) {
   }
 }
 
-function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice = 49, days = 30, paymentId = '', orderId = '' } = {}) {
+function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice = 2, days = 30, paymentId = '', orderId = '' } = {}) {
   const rawPhone = String(phone).replace(/\D/g, '');
   const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
   if (!cleanPhone) throw new Error('Phone number is required for subscription');
@@ -1095,7 +1095,7 @@ function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice
   }
 }
 
-function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amount = 4900, currency = 'INR', status = 'created', method = 'razorpay' }) {
+function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amount = 200, currency = 'INR', status = 'created', method = 'razorpay' }) {
   const rawPhone = String(userPhone).replace(/\D/g, '');
   const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
   const now = Math.floor(Date.now() / 1000);

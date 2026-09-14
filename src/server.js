@@ -49,8 +49,8 @@ const {
 } = require('./whatsapp');
 const { transcribeAndTranslateAudio } = require('./ai');
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_GoNotchTrip49';
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'secret_test_key_GoNotch49';
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || 'rzp_live_Tbvz9tjiGE4r0y').trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '06jPbgSdbo7Xnlq2ZAYdJwYG').trim();
 
 const app = express();
 const server = http.createServer(app);

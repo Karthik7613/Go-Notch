@@ -3671,7 +3671,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dashboardStatWA) {
     const parentCard = dashboardStatWA.closest('.p-4');
     if (parentCard) {
-      parentCard.classList.add('cursor-pointer', 'hover:border-red-500/50', 'transition');
+      parentCard.classList.add('cursor-pointer', 'hover:border-blue-500/50', 'transition');
       parentCard.addEventListener('click', () => {
         showQrModal();
       });

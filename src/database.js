@@ -656,12 +656,16 @@ function ensureUserHasKeywords(userPhone) {
 
     for (const kw of DEFAULT_INCLUDE_KEYWORDS) {
       if (kw && kw.trim()) {
-        insertStmt.run(kw.trim().toLowerCase(), 'include', cleanPhone, now);
+        const clean = kw.trim().toLowerCase();
+        insertStmt.run(clean, 'include', cleanPhone, now);
+        syncKeywordToSupabase(clean, 'include', cleanPhone).catch(() => {});
       }
     }
     for (const kw of DEFAULT_EXCLUDE_KEYWORDS) {
       if (kw && kw.trim()) {
-        insertStmt.run(kw.trim().toLowerCase(), 'exclude', cleanPhone, now);
+        const clean = kw.trim().toLowerCase();
+        insertStmt.run(clean, 'exclude', cleanPhone, now);
+        syncKeywordToSupabase(clean, 'exclude', cleanPhone).catch(() => {});
       }
     }
 

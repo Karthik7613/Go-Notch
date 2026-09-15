@@ -653,10 +653,10 @@ app.get('/api/export', (req, res) => {
   }
 });
 
-app.post('/api/logout', async (req, res) => {
+app.post(['/api/logout', '/api/whatsapp/disconnect'], async (req, res) => {
   try {
     await logoutWhatsApp();
-    res.json({ success: true, message: 'Logged out and WhatsApp session cleared.' });
+    res.json({ success: true, message: 'WhatsApp session disconnected and cleared.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

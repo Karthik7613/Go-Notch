@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('auth_user', JSON.stringify(user));
     if (token) localStorage.setItem('auth_token', token);
     currentUser = user;
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
     renderUserProfile(user);
   }
 
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_token');
     currentUser = null;
+    if (logoutBtn) logoutBtn.classList.add('hidden');
   }
 
   function apiFetch(urlPath, options = {}) {
@@ -1960,7 +1962,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (qrLogoutBtn) {
-    qrLogoutBtn.addEventListener('click', triggerLogoutAndReset);
+    qrLogoutBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to disconnect WhatsApp and generate a new QR code?')) {
+        await triggerLogoutAndReset();
+      }
+    });
+  }
+
+  const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+  if (profileLogoutBtn) {
+    profileLogoutBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to disconnect WhatsApp? This will remove the active WhatsApp session on the server.')) {
+        await triggerLogoutAndReset();
+      }
+    });
   }
 
   if (forceGenerateQrBtn) {
@@ -2006,7 +2021,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (connectedUserName) connectedUserName.textContent = `${user.name || 'WhatsApp Account'} (${user.phone || ''})`;
         const initial = (user.name || 'W').charAt(0).toUpperCase();
         if (userAvatar) userAvatar.textContent = initial;
-        if (logoutBtn) logoutBtn.classList.remove('hidden');
         updateProfilePageData();
       }
 
@@ -2030,8 +2044,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (qrFrame) qrFrame.classList.remove('hidden');
       if (qrImage) qrImage.src = qrToShow;
       if (qrLoading) qrLoading.classList.add('hidden');
-
-      if (logoutBtn) logoutBtn.classList.add('hidden');
     } else if (status === 'connecting') {
       isConnected = false;
       if (statusText) statusText.textContent = 'Connecting...';
@@ -2056,11 +2068,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  logoutBtn.addEventListener('click', async () => {
-    if (confirm('Are you sure you want to disconnect WhatsApp and remove local session data?')) {
-      await triggerLogoutAndReset();
-    }
-  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      if (confirm('Log out from your user account? WhatsApp will remain actively connected on the server in the background.')) {
+        clearStoredUser();
+        showAuthStep('phone');
+      }
+    });
+  }
 
   if (refreshThreadsBtn) {
     refreshThreadsBtn.addEventListener('click', () => {
@@ -2870,20 +2885,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 10-Second Alert Ring (repeats every 1.5s for 10s until user attends)
-  function playAlertChime(durationMs = 10000) {
+  // 5-Second Alert Ring (repeats every 1.5s for 5s until user attends)
+  function playAlertChime(durationMs = 5000) {
     if (!soundAlertsEnabled) return;
     stopAlertSoundLoop();
 
     // Play immediately
     playAlertChimeSingle();
 
-    // Repeat every 1.5s for 10 seconds
+    // Repeat every 1.5s for 5 seconds
     alertSoundInterval = setInterval(() => {
       playAlertChimeSingle();
     }, 1500);
 
-    // Auto-stop after exactly 10 seconds
+    // Auto-stop after exactly 5 seconds
     alertSoundStopTimer = setTimeout(() => {
       stopAlertSoundLoop();
     }, durationMs);

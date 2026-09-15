@@ -597,8 +597,14 @@ app.get('/api/keywords/alerts', (req, res) => {
 
 app.delete('/api/keywords/alerts', (req, res) => {
   try {
-    const success = clearKeywordAlerts();
-    io.emit('keyword_alert');
+    const phone = req.query.phone || req.headers['x-user-phone'] || '';
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const success = clearKeywordAlerts(cleanPhone);
+    if (cleanPhone) {
+      io.to(`user_${cleanPhone}`).emit('alerts_cleared', { phone: cleanPhone });
+    } else {
+      io.emit('alerts_cleared', { phone: '' });
+    }
     res.json({ success, alerts: [] });
   } catch (err) {
     res.status(500).json({ error: err.message });

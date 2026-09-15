@@ -305,6 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loadKeywordAlerts();
       });
 
+      socket.on('alerts_cleared', () => {
+        cachedAlertsData = [];
+        knownAlertIds.clear();
+        renderKeywordAlerts([]);
+        loadKeywordAlerts();
+      });
+
       socket.on('contacts_updated', () => loadThreads());
       socket.on('chats_updated', () => loadThreads());
     }
@@ -418,6 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         // Immediate optimistic UI clear of Matching list only (Saved trips remain 100% intact!)
         cachedAlertsData = [];
+        knownAlertIds.clear();
         renderKeywordAlerts([]);
         
         // Visual indicator on button
@@ -430,7 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
 
         // Call backend API to record cleared timestamp for matching list
-        await apiFetch('/api/keywords/alerts', { method: 'DELETE' });
+        const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
+        const phoneParam = userPhone ? `?phone=${userPhone}` : '';
+        await apiFetch(`/api/keywords/alerts${phoneParam}`, { method: 'DELETE' });
+        await loadKeywordAlerts();
       } catch (err) {
         console.error('Error clearing matched alerts:', err);
       }

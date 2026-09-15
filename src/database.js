@@ -768,9 +768,14 @@ function getKeywords(userPhone = '') {
   }
 }
 
-function clearKeywordAlerts() {
+function clearKeywordAlerts(userPhone = '') {
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  const key = cleanPhone ? `cleared_matching_timestamp_${cleanPhone}` : 'cleared_matching_timestamp';
   const now = Math.floor(Date.now() / 1000);
   try {
+    if (cleanPhone) {
+      db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`).run(key, String(now));
+    }
     db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES ('cleared_matching_timestamp', ?)`).run(String(now));
     return true;
   } catch (e) {
@@ -779,9 +784,12 @@ function clearKeywordAlerts() {
   }
 }
 
-function getClearedMatchingTimestamp() {
+function getClearedMatchingTimestamp(userPhone = '') {
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  const key = cleanPhone ? `cleared_matching_timestamp_${cleanPhone}` : 'cleared_matching_timestamp';
   try {
-    const row = db.prepare(`SELECT value FROM settings WHERE key = 'cleared_matching_timestamp'`).get();
+    const row = db.prepare(`SELECT value FROM settings WHERE key = ?`).get(key) ||
+                (cleanPhone ? db.prepare(`SELECT value FROM settings WHERE key = 'cleared_matching_timestamp'`).get() : null);
     if (!row) return 0;
     let val = Number(row.value);
     if (val > 10000000000) {

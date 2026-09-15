@@ -29,11 +29,6 @@ const groupNameCache = new Map();
 function checkAndEmitKeywordAlert(msgData) {
   if (!ioInstance || !msgData) return;
 
-  const { scope, since } = getMonitoringScope();
-  if (scope === 'upcoming' && since > 0 && Number(msgData.timestamp) < (since - 120)) {
-    return;
-  }
-
   const fullText = `${msgData.content || ''} ${msgData.ai_transcript || ''} ${msgData.ai_translation || ''} ${msgData.chat_name || ''} ${msgData.sender_name || ''}`.toLowerCase();
 
   try {
@@ -42,6 +37,11 @@ function checkAndEmitKeywordAlert(msgData) {
     const allPhones = [...new Set(userRows.map(r => r.user_phone).filter(Boolean))];
 
     for (const phone of allPhones) {
+      const { scope, since } = getMonitoringScope(phone);
+      if (scope === 'upcoming' && since > 0 && Number(msgData.timestamp) < since) {
+        continue;
+      }
+
       const { include, exclude } = getKeywords(phone);
       if (!include || include.length === 0) continue;
 
@@ -59,16 +59,19 @@ function checkAndEmitKeywordAlert(msgData) {
     }
 
     // Also check global/unassigned keywords if any
-    const globalKw = getKeywords('');
-    if (globalKw && globalKw.include && globalKw.include.length > 0) {
-      const hasExcludeGlobal = globalKw.exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
-      if (!hasExcludeGlobal) {
-        const matchedGlobal = globalKw.include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
-        if (matchedGlobal.length > 0) {
-          ioInstance.to('user_').emit('keyword_alert', {
-            ...msgData,
-            matched_keywords: matchedGlobal
-          });
+    const { scope: globalScope, since: globalSince } = getMonitoringScope('');
+    if (!(globalScope === 'upcoming' && globalSince > 0 && Number(msgData.timestamp) < globalSince)) {
+      const globalKw = getKeywords('');
+      if (globalKw && globalKw.include && globalKw.include.length > 0) {
+        const hasExcludeGlobal = globalKw.exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+        if (!hasExcludeGlobal) {
+          const matchedGlobal = globalKw.include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+          if (matchedGlobal.length > 0) {
+            ioInstance.to('user_').emit('keyword_alert', {
+              ...msgData,
+              matched_keywords: matchedGlobal
+            });
+          }
         }
       }
     }

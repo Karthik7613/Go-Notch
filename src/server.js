@@ -506,8 +506,9 @@ app.get('/api/stats', (req, res) => {
 app.get('/api/keywords', (req, res) => {
   try {
     const phone = req.query.phone || req.headers['x-user-phone'] || '';
-    const kw = getKeywords(phone);
-    const scopeData = getMonitoringScope();
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const kw = getKeywords(cleanPhone);
+    const scopeData = getMonitoringScope(cleanPhone);
     res.json({ ...kw, ...scopeData });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -516,7 +517,9 @@ app.get('/api/keywords', (req, res) => {
 
 app.get('/api/keywords/scope', (req, res) => {
   try {
-    res.json(getMonitoringScope());
+    const phone = req.query.phone || req.headers['x-user-phone'] || '';
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    res.json(getMonitoringScope(cleanPhone));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -525,11 +528,18 @@ app.get('/api/keywords/scope', (req, res) => {
 app.post('/api/keywords/scope', (req, res) => {
   try {
     const { scope } = req.body;
+    const phone = req.body.phone || req.query.phone || req.headers['x-user-phone'] || '';
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
     if (!scope || (scope !== 'upcoming' && scope !== 'all')) {
       return res.status(400).json({ error: 'scope must be "upcoming" or "all"' });
     }
-    const result = setMonitoringScope(scope);
-    io.emit('keywords_updated', getKeywords());
+    const result = setMonitoringScope(scope, cleanPhone);
+    const allKw = getKeywords(cleanPhone);
+    if (cleanPhone) {
+      io.to(`user_${cleanPhone}`).emit('keywords_updated', { phone: cleanPhone, keywords: { ...allKw, ...result } });
+    } else {
+      io.emit('keywords_updated', { phone: '', keywords: { ...allKw, ...result } });
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

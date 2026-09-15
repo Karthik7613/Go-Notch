@@ -793,45 +793,56 @@ function getClearedMatchingTimestamp() {
   }
 }
 
-function getMonitoringScope() {
+function getMonitoringScope(userPhone = '') {
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  const scopeKey = cleanPhone ? `monitoring_scope_${cleanPhone}` : 'monitoring_scope';
+  const sinceKey = cleanPhone ? `monitoring_upcoming_since_${cleanPhone}` : 'monitoring_upcoming_since';
+
   try {
-    const scopeRow = db.prepare(`SELECT value FROM settings WHERE key = 'monitoring_scope'`).get();
-    const sinceRow = db.prepare(`SELECT value FROM settings WHERE key = 'monitoring_upcoming_since'`).get();
+    const scopeRow = db.prepare(`SELECT value FROM settings WHERE key = ?`).get(scopeKey) ||
+                     (cleanPhone ? db.prepare(`SELECT value FROM settings WHERE key = 'monitoring_scope'`).get() : null);
+    const sinceRow = db.prepare(`SELECT value FROM settings WHERE key = ?`).get(sinceKey);
+
     const scope = (scopeRow && scopeRow.value === 'all') ? 'all' : 'upcoming';
     let since = sinceRow ? Number(sinceRow.value) : 0;
     if (scope === 'upcoming' && since === 0) {
       since = Math.floor(Date.now() / 1000);
-      db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES ('monitoring_upcoming_since', ?)`).run(String(since));
+      db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`).run(sinceKey, String(since));
     }
     return { scope, since };
   } catch (e) {
-    return { scope: 'upcoming', since: 0 };
+    return { scope: 'upcoming', since: Math.floor(Date.now() / 1000) };
   }
 }
 
-function setMonitoringScope(scope) {
+function setMonitoringScope(scope, userPhone = '') {
   const cleanScope = scope === 'all' ? 'all' : 'upcoming';
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  const scopeKey = cleanPhone ? `monitoring_scope_${cleanPhone}` : 'monitoring_scope';
+  const sinceKey = cleanPhone ? `monitoring_upcoming_since_${cleanPhone}` : 'monitoring_upcoming_since';
   const now = Math.floor(Date.now() / 1000);
+
   try {
-    db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES ('monitoring_scope', ?)`).run(cleanScope);
+    db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`).run(scopeKey, cleanScope);
     if (cleanScope === 'upcoming') {
-      db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES ('monitoring_upcoming_since', ?)`).run(String(now));
+      db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`).run(sinceKey, String(now));
       return { scope: cleanScope, since: now };
     } else {
       return { scope: cleanScope, since: 0 };
     }
   } catch (e) {
     console.error('Error setting monitoring scope:', e.message);
-    return { scope: cleanScope, since: 0 };
+    return { scope: cleanScope, since: cleanScope === 'upcoming' ? now : 0 };
   }
 }
 
 function getKeywordAlerts(limit = 100, userPhone = '') {
-  const { include, exclude } = getKeywords(userPhone);
+  const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
+  const { include, exclude } = getKeywords(cleanPhone);
   if (!include || include.length === 0) return [];
 
   const clearedTime = getClearedMatchingTimestamp();
-  const { scope, since } = getMonitoringScope();
+  const { scope, since } = getMonitoringScope(cleanPhone);
 
   const includeClauses = [];
   const excludeClauses = [];
@@ -864,7 +875,7 @@ function getKeywordAlerts(limit = 100, userPhone = '') {
 
   let minTimestamp = 0;
   if (scope === 'upcoming') {
-    minTimestamp = Math.max(clearedTime, (since ? since - 120 : 0));
+    minTimestamp = Math.max(clearedTime, (since || Math.floor(Date.now() / 1000)));
   } else {
     minTimestamp = clearedTime;
   }

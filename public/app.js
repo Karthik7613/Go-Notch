@@ -1458,12 +1458,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function setMonitoringScopeValue(scope) {
     updateMonitoringScopeUI(scope);
     try {
+      const userPhone = currentUser && currentUser.phone ? currentUser.phone : '';
       await apiFetch('/api/keywords/scope', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope })
+        body: JSON.stringify({ scope, phone: userPhone })
       });
-      loadKeywordAlerts();
+      await loadKeywordAlerts();
     } catch (e) {
       console.error('Failed to set monitoring scope:', e);
     }

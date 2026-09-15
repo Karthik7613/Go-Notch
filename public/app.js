@@ -696,6 +696,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.exists && data.hasPasscode) {
           if (authLoginUserName) authLoginUserName.textContent = data.name || 'User';
           showAuthStep('login');
+        } else if (data.exists && !data.hasPasscode) {
+          // User already exists in database, just prompt them to set their 4-digit passcode directly
+          if (authResetDisplayPhone) authResetDisplayPhone.textContent = formattedDisplay;
+          showAuthStep('reset');
         } else {
           showAuthStep('register');
         }

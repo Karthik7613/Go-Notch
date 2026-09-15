@@ -28,6 +28,7 @@ const {
   getKeywordAlerts,
   clearKeywordAlerts,
   findUserByPhone,
+  findUserByPhoneAsync,
   createUser,
   updateUserProfile,
   updateUserPasscode,
@@ -35,6 +36,7 @@ const {
   saveOtp,
   verifyOtp,
   getUserSubscription,
+  getUserSubscriptionAsync,
   createOrUpdateSubscription,
   recordPayment,
   getPaymentHistory
@@ -86,7 +88,7 @@ io.on('connection', (socket) => {
 });
 
 // Authentication API Routes (Mobile Number + 4-Digit Passcode)
-app.post('/api/auth/check-phone', (req, res) => {
+app.post('/api/auth/check-phone', async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) {
@@ -97,7 +99,7 @@ app.post('/api/auth/check-phone', (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
-    const existingUser = findUserByPhone(cleanPhone);
+    const existingUser = await findUserByPhoneAsync(cleanPhone);
     const exists = Boolean(existingUser);
     const hasPasscode = Boolean(existingUser && existingUser.passcode);
 
@@ -113,7 +115,7 @@ app.post('/api/auth/check-phone', (req, res) => {
   }
 });
 
-app.post('/api/auth/login-passcode', (req, res) => {
+app.post('/api/auth/login-passcode', async (req, res) => {
   try {
     const { phone, passcode } = req.body;
     if (!phone) {
@@ -124,7 +126,7 @@ app.post('/api/auth/login-passcode', (req, res) => {
     }
 
     const cleanPhone = String(phone).replace(/\D/g, '');
-    const user = findUserByPhone(cleanPhone);
+    const user = await findUserByPhoneAsync(cleanPhone);
 
     if (!user) {
       return res.status(404).json({ error: 'No account found for this mobile number. Please register.' });
@@ -183,7 +185,7 @@ app.post('/api/auth/register-passcode', (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-passcode', (req, res) => {
+app.post('/api/auth/reset-passcode', async (req, res) => {
   try {
     const { phone, passcode } = req.body;
     if (!phone) {
@@ -196,13 +198,13 @@ app.post('/api/auth/reset-passcode', (req, res) => {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const cleanPasscode = String(passcode).trim();
 
-    const existingUser = findUserByPhone(cleanPhone);
+    const existingUser = await findUserByPhoneAsync(cleanPhone);
     if (!existingUser) {
       return res.status(404).json({ error: 'Account not found. Please register.' });
     }
 
     updateUserPasscode(cleanPhone, cleanPasscode);
-    const updatedUser = findUserByPhone(cleanPhone);
+    const updatedUser = await findUserByPhoneAsync(cleanPhone);
     const token = `tok_${cleanPhone}_${Date.now()}`;
 
     res.json({
@@ -216,13 +218,13 @@ app.post('/api/auth/reset-passcode', (req, res) => {
   }
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
   try {
     const phone = req.query.phone || req.headers['x-user-phone'];
     if (!phone) {
       return res.status(400).json({ error: 'Phone identifier required' });
     }
-    const user = findUserByPhone(phone);
+    const user = await findUserByPhoneAsync(phone);
     if (!user) {
       return res.status(404).json({ error: 'User profile not found' });
     }
@@ -246,14 +248,14 @@ app.post('/api/auth/update-profile', (req, res) => {
 });
 
 // Subscription & Razorpay Payment API Routes (₹2/month Plan)
-app.get('/api/subscription/status', (req, res) => {
+app.get('/api/subscription/status', async (req, res) => {
   try {
     const phone = req.query.phone || req.headers['x-user-phone'];
     if (!phone) {
       return res.status(400).json({ error: 'User phone is required' });
     }
     const cleanPhone = String(phone).replace(/\D/g, '');
-    const subscription = getUserSubscription(cleanPhone);
+    const subscription = await getUserSubscriptionAsync(cleanPhone);
     const keyId = process.env.RAZORPAY_KEY_ID || RAZORPAY_KEY_ID;
     res.json({
       success: true,

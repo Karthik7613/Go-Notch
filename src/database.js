@@ -930,6 +930,39 @@ function findUserByPhone(phone) {
   }
 }
 
+async function findUserByPhoneAsync(phone) {
+  let user = findUserByPhone(phone);
+  if (user) return user;
+
+  // Fallback check in Supabase if user is not in local SQLite cache
+  try {
+    const sbUser = await fetchUserFromSupabase(phone);
+    if (sbUser) {
+      const cleanPhone = String(sbUser.phone || phone).replace(/\D/g, '');
+      const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+      const now = Math.floor(Date.now() / 1000);
+
+      db.prepare(`
+        INSERT OR REPLACE INTO users (phone, name, gender, passcode, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        p10,
+        sbUser.name || 'User',
+        sbUser.gender || 'Male',
+        sbUser.passcode ? String(sbUser.passcode).trim() : null,
+        sbUser.created_at || now,
+        sbUser.updated_at || now
+      );
+      ensureUserHasKeywords(p10);
+      return findUserByPhone(p10);
+    }
+  } catch (e) {
+    console.warn('findUserByPhoneAsync Supabase lookup exception:', e.message);
+  }
+
+  return null;
+}
+
 function createUser(phone, name, gender = 'Male', passcode = '') {
   if (!phone) return null;
   const rawStr = String(phone).trim();
@@ -1099,6 +1132,41 @@ function getUserSubscription(phone) {
   }
 }
 
+async function getUserSubscriptionAsync(phone) {
+  const sub = getUserSubscription(phone);
+  if (sub && sub.is_subscribed) return sub;
+
+  try {
+    const sbSub = await fetchSubscriptionFromSupabase(phone);
+    if (sbSub) {
+      const cleanPhone = String(sbSub.user_phone || phone).replace(/\D/g, '');
+      const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+      const now = Math.floor(Date.now() / 1000);
+
+      db.prepare(`
+        INSERT OR REPLACE INTO subscriptions (user_phone, plan_name, plan_price, status, started_at, expires_at, payment_id, order_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        p10,
+        sbSub.plan_name || 'Monthly Pro',
+        sbSub.plan_price || 2,
+        sbSub.status || 'active',
+        sbSub.started_at || now,
+        sbSub.expires_at || (now + 30 * 86400),
+        sbSub.payment_id || '',
+        sbSub.order_id || '',
+        sbSub.created_at || now,
+        sbSub.updated_at || now
+      );
+      return getUserSubscription(p10);
+    }
+  } catch (e) {
+    console.warn('getUserSubscriptionAsync Supabase lookup exception:', e.message);
+  }
+
+  return sub;
+}
+
 function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice = 2, days = 30, paymentId = '', orderId = '' } = {}) {
   const rawPhone = String(phone).replace(/\D/g, '');
   const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
@@ -1136,7 +1204,7 @@ function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice
 
 function recordPayment({ userPhone, orderId, paymentId = '', signature = '', amount = 200, currency = 'INR', status = 'created', method = 'razorpay' }) {
   const rawPhone = String(userPhone).replace(/\D/g, '');
-  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : cleanPhone;
   const now = Math.floor(Date.now() / 1000);
 
   try {
@@ -1210,6 +1278,7 @@ module.exports = {
   formatPhoneNumber,
   enrichMessage,
   findUserByPhone,
+  findUserByPhoneAsync,
   createUser,
   updateUserProfile,
   updateUserPasscode,
@@ -1217,6 +1286,7 @@ module.exports = {
   saveOtp,
   verifyOtp,
   getUserSubscription,
+  getUserSubscriptionAsync,
   createOrUpdateSubscription,
   recordPayment,
   getPaymentHistory

@@ -1231,14 +1231,28 @@ function createOrUpdateSubscription(phone, { planName = 'Monthly Pro', planPrice
   const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
   if (!cleanPhone) throw new Error('Phone number is required for subscription');
 
+  // Prevent duplicate extension if this exact payment or order ID was already processed
+  if (paymentId || orderId) {
+    const alreadyCredited = db.prepare(`
+      SELECT * FROM subscriptions 
+      WHERE (user_phone = ? OR user_phone LIKE ?) 
+        AND ((payment_id != '' AND payment_id = ?) OR (order_id != '' AND order_id = ?))
+      LIMIT 1
+    `).get(cleanPhone, `%${cleanPhone}`, paymentId || '__none__', orderId || '__none__');
+
+    if (alreadyCredited) {
+      return getUserSubscription(cleanPhone);
+    }
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const current = getUserSubscription(cleanPhone);
 
   let startedAt = now;
   let expiresAt = now + (days * 86400);
 
-  // If already active, extend from current expiry date
-  if (current && current.is_subscribed && current.expires_at > now) {
+  // If already active and a brand new payment is being applied, extend from current expiry date
+  if (current && current.is_subscribed && current.expires_at > now && (paymentId || orderId)) {
     startedAt = current.started_at;
     expiresAt = current.expires_at + (days * 86400);
   }

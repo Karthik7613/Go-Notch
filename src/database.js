@@ -941,15 +941,15 @@ function findUserByPhone(phone) {
 }
 
 async function findUserByPhoneAsync(phone) {
-  let user = findUserByPhone(phone);
-  if (user) return user;
+  if (!phone) return null;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  if (!cleanPhone) return null;
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
 
-  // Fallback check in Supabase if user is not in local SQLite cache
+  // 1. Check cloud database (Supabase) FIRST to always sync latest user name/profile
   try {
-    const sbUser = await fetchUserFromSupabase(phone);
-    if (sbUser) {
-      const cleanPhone = String(sbUser.phone || phone).replace(/\D/g, '');
-      const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    const sbUser = await fetchUserFromSupabase(cleanPhone);
+    if (sbUser && sbUser.name) {
       const now = Math.floor(Date.now() / 1000);
 
       db.prepare(`
@@ -957,20 +957,20 @@ async function findUserByPhoneAsync(phone) {
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(
         p10,
-        sbUser.name || 'User',
+        sbUser.name,
         sbUser.gender || 'Male',
         sbUser.passcode ? String(sbUser.passcode).trim() : null,
         sbUser.created_at || now,
         sbUser.updated_at || now
       );
-      ensureUserHasKeywords(p10);
       return findUserByPhone(p10);
     }
   } catch (e) {
     console.warn('findUserByPhoneAsync Supabase lookup exception:', e.message);
   }
 
-  return null;
+  // 2. Fallback to local SQLite cache
+  return findUserByPhone(cleanPhone);
 }
 
 function createUser(phone, name, gender = 'Male', passcode = '') {

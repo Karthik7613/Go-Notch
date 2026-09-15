@@ -85,7 +85,20 @@ function initDb() {
       name TEXT,
       gender TEXT,
       passcode TEXT,
+      is_active INTEGER DEFAULT 1,
       created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      plan_key TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      duration_days INTEGER DEFAULT 30,
+      description TEXT,
+      is_active INTEGER DEFAULT 1,
       updated_at INTEGER NOT NULL
     );
 
@@ -127,6 +140,9 @@ function initDb() {
 
   // Migration for existing tables
   try {
+    db.exec(`ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1;`);
+  } catch (e) {}
+  try {
     db.exec(`ALTER TABLE messages ADD COLUMN ai_transcript TEXT;`);
   } catch (e) {}
   try {
@@ -138,6 +154,23 @@ function initDb() {
   try {
     db.exec(`ALTER TABLE users ADD COLUMN passcode TEXT;`);
   } catch (e) {}
+
+  // Seed default plans if empty
+  try {
+    const planCount = db.prepare('SELECT COUNT(*) as count FROM plans').get()?.count || 0;
+    if (planCount === 0) {
+      const now = Math.floor(Date.now() / 1000);
+      const insertPlan = db.prepare(`
+        INSERT INTO plans (plan_key, name, amount, currency, duration_days, description, is_active, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertPlan.run('monthly_pro', 'Monthly Pro', 2, 'INR', 30, 'Full 30-Day Pro WhatsApp Monitor & Live Keyword Alerts', 1, now);
+      insertPlan.run('annual_vip', 'Annual VIP', 499, 'INR', 365, '365-Day Unlimited WhatsApp Bridge & Priority Audio AI', 1, now);
+      insertPlan.run('weekly_pass', '7-Day Pass', 19, 'INR', 7, '7-Day Scanner & Real-Time Alerts', 1, now);
+    }
+  } catch (e) {
+    console.error('Seed plans error:', e.message);
+  }
   // Migration for keywords table if it had old column-level UNIQUE constraint
   try {
     const kwTableSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='keywords'").get();
@@ -959,15 +992,23 @@ async function findUserByPhoneAsync(phone) {
     const sbUser = await fetchUserFromSupabase(cleanPhone);
     if (sbUser && sbUser.name) {
       const now = Math.floor(Date.now() / 1000);
+      const existingLocal = findUserByPhone(p10);
+      const currentActive = existingLocal ? (existingLocal.is_active === 0 ? 0 : 1) : (sbUser.is_active !== undefined ? (sbUser.is_active ? 1 : 0) : 1);
 
       db.prepare(`
-        INSERT OR REPLACE INTO users (phone, name, gender, passcode, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO users (phone, name, gender, passcode, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(phone) DO UPDATE SET
+          name = excluded.name,
+          gender = excluded.gender,
+          passcode = COALESCE(excluded.passcode, users.passcode),
+          updated_at = excluded.updated_at
       `).run(
         p10,
         sbUser.name,
         sbUser.gender || 'Male',
         sbUser.passcode ? String(sbUser.passcode).trim() : null,
+        currentActive,
         sbUser.created_at || now,
         sbUser.updated_at || now
       );
@@ -1272,6 +1313,169 @@ function getPaymentHistory(phone) {
   }
 }
 
+function getAllUsersAdmin() {
+  try {
+    const users = db.prepare('SELECT id, phone, name, gender, passcode, is_active, created_at, updated_at FROM users ORDER BY created_at DESC').all();
+    const now = Math.floor(Date.now() / 1000);
+
+    return users.map(u => {
+      const sub = getUserSubscription(u.phone);
+      const kwCount = db.prepare('SELECT COUNT(*) as count FROM keywords WHERE user_phone = ? OR user_phone LIKE ?').get(u.phone, `%${u.phone.slice(-10)}`)?.count || 0;
+      return {
+        ...u,
+        is_active: u.is_active === 0 ? 0 : 1,
+        subscription: sub,
+        is_subscribed: sub.is_subscribed,
+        plan_name: sub.plan_name,
+        plan_price: sub.plan_price,
+        days_left: sub.days_left,
+        expires_at: sub.expires_at,
+        keywords_count: kwCount
+      };
+    });
+  } catch (e) {
+    console.error('getAllUsersAdmin error:', e.message);
+    return [];
+  }
+}
+
+function setUserActiveStatus(phone, isActive) {
+  if (!phone) return false;
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+  const statusInt = isActive ? 1 : 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    const res = db.prepare(`
+      UPDATE users 
+      SET is_active = ?, updated_at = ? 
+      WHERE phone = ? OR phone = ? OR phone LIKE ?
+    `).run(statusInt, now, cleanPhone, p10, `%${p10}`);
+
+    const user = findUserByPhone(cleanPhone);
+    if (user) {
+      syncUserToSupabase(user).catch(() => {});
+    }
+    return res.changes > 0;
+  } catch (e) {
+    console.error('setUserActiveStatus error:', e.message);
+    return false;
+  }
+}
+
+function getAllPlans() {
+  try {
+    return db.prepare('SELECT * FROM plans ORDER BY id ASC').all();
+  } catch (e) {
+    console.error('getAllPlans error:', e.message);
+    return [];
+  }
+}
+
+function getPlanByKey(planKey) {
+  try {
+    return db.prepare('SELECT * FROM plans WHERE plan_key = ? OR name = ? LIMIT 1').get(planKey, planKey);
+  } catch (e) {
+    console.error('getPlanByKey error:', e.message);
+    return null;
+  }
+}
+
+function updatePlanAmount(planKey, amount, name = null, durationDays = null, description = null) {
+  if (!planKey) return false;
+  const now = Math.floor(Date.now() / 1000);
+  const amt = Math.max(0, parseInt(amount, 10) || 0);
+
+  try {
+    const existing = db.prepare('SELECT * FROM plans WHERE plan_key = ?').get(planKey);
+    if (existing) {
+      db.prepare(`
+        UPDATE plans 
+        SET amount = ?,
+            name = COALESCE(?, name),
+            duration_days = COALESCE(?, duration_days),
+            description = COALESCE(?, description),
+            updated_at = ?
+        WHERE plan_key = ?
+      `).run(amt, name || null, durationDays || null, description || null, now, planKey);
+      return true;
+    } else {
+      db.prepare(`
+        INSERT INTO plans (plan_key, name, amount, currency, duration_days, description, is_active, updated_at)
+        VALUES (?, ?, ?, 'INR', ?, ?, 1, ?)
+      `).run(planKey, name || planKey, amt, durationDays || 30, description || '', now);
+      return true;
+    }
+  } catch (e) {
+    console.error('updatePlanAmount error:', e.message);
+    return false;
+  }
+}
+
+function getAdminMetrics() {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
+    const activeUsers = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1 OR is_active IS NULL').get()?.count || 0;
+    const deactivatedUsers = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 0').get()?.count || 0;
+    
+    // Subscribed users
+    const subscribedUsers = db.prepare(`
+      SELECT COUNT(DISTINCT user_phone) as count 
+      FROM subscriptions 
+      WHERE status = 'active' AND expires_at > ?
+    `).get(now)?.count || 0;
+
+    // Total revenue in Rupees (Razorpay stores paise or INR in db)
+    const revenueRow = db.prepare(`
+      SELECT SUM(amount) as total 
+      FROM payments 
+      WHERE status = 'captured' OR status = 'success' OR status = 'paid'
+    `).get();
+    const totalRevenue = revenueRow?.total ? (revenueRow.total > 500 ? Math.round(revenueRow.total / 100) : revenueRow.total) : 0;
+
+    const totalMessages = db.prepare('SELECT COUNT(*) as count FROM messages').get()?.count || 0;
+    const totalKeywords = db.prepare('SELECT COUNT(*) as count FROM keywords').get()?.count || 0;
+
+    return {
+      totalUsers,
+      activeUsers,
+      deactivatedUsers,
+      subscribedUsers,
+      totalRevenue,
+      totalMessages,
+      totalKeywords
+    };
+  } catch (e) {
+    console.error('getAdminMetrics error:', e.message);
+    return {
+      totalUsers: 0,
+      activeUsers: 0,
+      deactivatedUsers: 0,
+      subscribedUsers: 0,
+      totalRevenue: 0,
+      totalMessages: 0,
+      totalKeywords: 0
+    };
+  }
+}
+
+function getAllPaymentsAdmin(limit = 100) {
+  try {
+    return db.prepare(`
+      SELECT p.*, u.name as user_name 
+      FROM payments p
+      LEFT JOIN users u ON u.phone = p.user_phone OR u.phone LIKE '%' || substr(p.user_phone, -10)
+      ORDER BY p.created_at DESC 
+      LIMIT ?
+    `).all(limit);
+  } catch (e) {
+    console.error('getAllPaymentsAdmin error:', e.message);
+    return [];
+  }
+}
+
 module.exports = {
   db,
   saveMessage,
@@ -1307,5 +1511,12 @@ module.exports = {
   getUserSubscriptionAsync,
   createOrUpdateSubscription,
   recordPayment,
-  getPaymentHistory
+  getPaymentHistory,
+  getAllUsersAdmin,
+  setUserActiveStatus,
+  getAllPlans,
+  getPlanByKey,
+  updatePlanAmount,
+  getAdminMetrics,
+  getAllPaymentsAdmin
 };

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard • Go-Notch Monitor</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+            admin: {
+              bg: '#0f172a',
+              card: '#1e293b',
+              border: '#334155',
+              hover: '#283548'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col selection:bg-blue-500 selection:text-white">
+
+  <!-- ================= AUTH SCREEN ================= -->
+  <div id="adminAuthScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 px-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden">
+      <!-- Glow Accent -->
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center space-y-2 relative">
+        <div class="w-16 h-16 bg-blue-600/10 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto text-blue-400 mb-4 shadow-inner">
+          <i data-lucide="shield-check" class="w-8 h-8"></i>
+        </div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-white">Admin Control Center</h1>
+        <p class="text-xs text-slate-400">Enter your secure administrator passcode to manage users and pricing</p>
+      </div>
+
+      <form id="adminLoginForm" class="space-y-4 relative">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Admin Passcode</label>
+          <div class="relative">
+            <input type="password" id="adminPasscodeInput" required placeholder="Enter passcode..." class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition">
+            <button type="button" id="toggleAdminPasscodeBtn" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="adminLoginError" class="hidden p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+          <span id="adminLoginErrorMsg">Invalid passcode</span>
+        </div>
+
+        <button type="submit" id="adminLoginBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-semibold text-sm rounded-xl transition shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="lock" class="w-4 h-4"></i>
+          <span>Unlock Admin Panel</span>
+        </button>
+      </form>
+
+      <div class="pt-4 border-t border-slate-800 text-center">
+        <a href="/" class="text-xs text-slate-400 hover:text-blue-400 transition inline-flex items-center gap-1.5">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          Back to User Monitor App
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN ADMIN DASHBOARD ================= -->
+  <div id="adminDashboardApp" class="hidden flex-1 flex flex-col min-h-screen">
+    
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+          <i data-lucide="shield" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold text-white tracking-tight">Go-Notch Admin</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-500/20 text-blue-400 border border-blue-500/30">Master</span>
+          </div>
+          <p class="text-[11px] text-slate-400">User Management & Dynamic Pricing</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/" target="_blank" title="Open User App" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Open User App</span>
+        </a>
+
+        <button id="adminRefreshBtn" title="Refresh Data" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+
+        <button id="adminLogoutBtn" title="Lock Admin Panel" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto no-scrollbar">
+        <button data-tab="overview" class="admin-tab-btn active px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          Overview & Metrics
+        </button>
+        <button data-tab="users" class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          Users & Accounts (<span id="tabUsersCount">0</span>)
+        </button>
+        <button data-tab="plans" class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+          <i data-lucide="credit-card" class="w-4 h-4"></i>
+          Plans & Pricing (<span id="tabPlansCount">3</span>)
+        </button>
+        <button data-tab="payments" class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+          <i data-lucide="receipt" class="w-4 h-4"></i>
+          Payments & Transactions
+        </button>
+      </div>
+
+      <!-- ================= TAB 1: OVERVIEW ================= -->
+      <section id="tab-overview" class="admin-tab-content space-y-6">
+        <!-- Metric Cards Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Card 1: Total Users -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Total Users</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <i data-lucide="users" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-white" id="metricTotalUsers">0</div>
+            <p class="text-[11px] text-slate-500">Registered platform accounts</p>
+          </div>
+
+          <!-- Card 2: Active Accounts -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Active Users</span>
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <i data-lucide="user-check" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-emerald-400" id="metricActiveUsers">0</div>
+            <p class="text-[11px] text-slate-500">Allowed to log in & monitor</p>
+          </div>
+
+          <!-- Card 3: Deactivated Accounts -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Deactivated</span>
+              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <i data-lucide="user-x" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-rose-400" id="metricDeactivatedUsers">0</div>
+            <p class="text-[11px] text-slate-500">Blocked / access revoked</p>
+          </div>
+
+          <!-- Card 4: Subscribed Members -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Pro Members</span>
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-amber-400" id="metricSubscribedUsers">0</div>
+            <p class="text-[11px] text-slate-500">Active paid passes</p>
+          </div>
+        </div>
+
+        <!-- Secondary Stats & Revenue Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Total Revenue Card -->
+          <div class="bg-gradient-to-br from-blue-950/60 to-slate-900 border border-blue-800/40 rounded-2xl p-6 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                <i data-lucide="indian-rupee" class="w-4 h-4"></i>
+                <span>Total Revenue Collected</span>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300">Live</span>
+            </div>
+            <div class="text-4xl font-extrabold text-white" id="metricTotalRevenue">₹0</div>
+            <p class="text-xs text-slate-400">Aggregated successful Razorpay transactions</p>
+          </div>
+
+          <!-- Messages Monitored -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">WhatsApp Messages</span>
+              <i data-lucide="message-square" class="w-4 h-4 text-slate-400"></i>
+            </div>
+            <div class="text-3xl font-extrabold text-white" id="metricTotalMessages">0</div>
+            <p class="text-xs text-slate-500">Real-time monitored messages in SQLite</p>
+          </div>
+
+          <!-- Active Keywords -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-semibold uppercase tracking-wider">Keywords Configured</span>
+              <i data-lucide="hash" class="w-4 h-4 text-slate-400"></i>
+            </div>
+            <div class="text-3xl font-extrabold text-white" id="metricTotalKeywords">0</div>
+            <p class="text-xs text-slate-500">Active monitoring rules across users</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: USERS MANAGEMENT ================= -->
+      <section id="tab-users" class="admin-tab-content hidden space-y-4">
+        <!-- Control Bar: Search & Status Filters -->
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="userSearchInput" placeholder="Search by name or mobile number..." class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition">
+          </div>
+
+          <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button data-user-filter="all" class="user-filter-btn active px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer">All</button>
+            <button data-user-filter="active" class="user-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-emerald-400">Active</button>
+            <button data-user-filter="deactivated" class="user-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-rose-400">Deactivated</button>
+            <button data-user-filter="subscribed" class="user-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-amber-400">Subscribed</button>
+          </div>
+        </div>
+
+        <!-- Users Table Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-950/50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="py-3.5 px-4">User</th>
+                  <th class="py-3.5 px-4">Mobile</th>
+                  <th class="py-3.5 px-4">Account Status</th>
+                  <th class="py-3.5 px-4">Subscription</th>
+                  <th class="py-3.5 px-4">Keywords</th>
+                  <th class="py-3.5 px-4">Registered</th>
+                  <th class="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody" class="divide-y divide-slate-800/60 text-xs">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-slate-500">
+                    <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Loading users...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: PLANS & PRICING ================= -->
+      <section id="tab-plans" class="admin-tab-content hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Subscription Plans & Dynamic Pricing</h2>
+            <p class="text-xs text-slate-400">Modify plan prices in real-time. Changes instantly update the user checkout flow.</p>
+          </div>
+        </div>
+
+        <!-- Plans Grid -->
+        <div id="plansContainer" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Dynamically populated via admin.js -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: PAYMENTS & AUDIT ================= -->
+      <section id="tab-payments" class="admin-tab-content hidden space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">Payment Records & Audit Logs</h2>
+          <p class="text-xs text-slate-400">Live transaction history from Razorpay and user subscriptions.</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-950/50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="py-3.5 px-4">Transaction / Order ID</th>
+                  <th class="py-3.5 px-4">User</th>
+                  <th class="py-3.5 px-4">Amount</th>
+                  <th class="py-3.5 px-4">Status</th>
+                  <th class="py-3.5 px-4">Date</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody" class="divide-y divide-slate-800/60 text-xs">
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-slate-500">Loading payments...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= EDIT PLAN PRICE MODAL ================= -->
+  <div id="editPlanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Edit Plan Pricing</h3>
+        </div>
+        <button id="closeEditPlanModalBtn" class="p-1 text-slate-400 hover:text-white rounded-lg transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="editPlanForm" class="space-y-4">
+        <input type="hidden" id="editPlanKey">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Plan Name</label>
+          <input type="text" id="editPlanName" required class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-2.5 text-xs text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Price Amount (₹ INR)</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+            <input type="number" id="editPlanAmount" min="0" step="1" required class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 rounded-xl pl-8 pr-4 py-2.5 text-xs text-white font-mono font-bold outline-none">
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">Users will be charged this exact amount during Razorpay checkout.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Duration (Days)</label>
+          <input type="number" id="editPlanDuration" min="1" step="1" required class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-2.5 text-xs text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+          <textarea id="editPlanDesc" rows="2" class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-2.5 text-xs text-white outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button type="button" id="cancelEditPlanBtn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit" id="savePlanBtn" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Save & Apply</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="adminToastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Admin Script -->
+  <script src="admin.js"></script>
+</body>
+</html>

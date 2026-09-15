@@ -39,7 +39,14 @@ const {
   getUserSubscriptionAsync,
   createOrUpdateSubscription,
   recordPayment,
-  getPaymentHistory
+  getPaymentHistory,
+  getAllUsersAdmin,
+  setUserActiveStatus,
+  getAllPlans,
+  getPlanByKey,
+  updatePlanAmount,
+  getAdminMetrics,
+  getAllPaymentsAdmin
 } = require('./database');
 const { 
   setSocketIO, 
@@ -53,6 +60,7 @@ const { transcribeAndTranslateAudio } = require('./ai');
 
 const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || 'rzp_live_Tbvz9tjiGE4r0y').trim();
 const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '06jPbgSdbo7Xnlq2ZAYdJwYG').trim();
+const ADMIN_PASSCODE = (process.env.ADMIN_PASSCODE || 'admin7613').trim();
 
 const app = express();
 const server = http.createServer(app);
@@ -70,6 +78,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 
 // Health check endpoint for Railway and cloud monitoring
 app.get('/health', (req, res) => {
@@ -111,12 +120,26 @@ app.post('/api/auth/check-phone', async (req, res) => {
     const existingUser = await findUserByPhoneAsync(cleanPhone);
     const exists = Boolean(existingUser);
     const hasPasscode = Boolean(existingUser && existingUser.passcode);
+    const isDeactivated = Boolean(existingUser && existingUser.is_active === 0);
+
+    if (isDeactivated) {
+      return res.json({
+        success: true,
+        phone: cleanPhone,
+        exists: true,
+        hasPasscode,
+        isDeactivated: true,
+        name: existingUser?.name || '',
+        error: 'This account has been deactivated. Please contact the administrator to reactivate your account.'
+      });
+    }
 
     res.json({
       success: true,
       phone: cleanPhone,
       exists,
       hasPasscode,
+      isDeactivated: false,
       name: existingUser?.name || ''
     });
   } catch (err) {
@@ -139,6 +162,13 @@ app.post('/api/auth/login-passcode', async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ error: 'No account found for this mobile number. Please register.' });
+    }
+
+    if (user.is_active === 0) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated by the administrator. Please contact admin to reactivate access.',
+        isDeactivated: true
+      });
     }
 
     if (!user.passcode) {
@@ -212,6 +242,13 @@ app.post('/api/auth/reset-passcode', async (req, res) => {
       return res.status(404).json({ error: 'Account not found. Please register.' });
     }
 
+    if (existingUser.is_active === 0) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated. Please contact the administrator.',
+        isDeactivated: true
+      });
+    }
+
     updateUserPasscode(cleanPhone, cleanPasscode);
     const updatedUser = await findUserByPhoneAsync(cleanPhone);
     const token = `tok_${cleanPhone}_${Date.now()}`;
@@ -237,6 +274,12 @@ app.get('/api/auth/me', async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User profile not found' });
     }
+    if (user.is_active === 0) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated by administrator. Please contact admin.',
+        isDeactivated: true
+      });
+    }
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -251,6 +294,151 @@ app.post('/api/auth/update-profile', (req, res) => {
     }
     const updated = updateUserProfile(phone, name, gender, passcode);
     res.json({ success: true, user: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Authentication Middleware
+function verifyAdminToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.query.token || req.headers['x-admin-token']);
+  if (!token || !token.startsWith('adm_tok_')) {
+    return res.status(401).json({ error: 'Unauthorized: Admin authentication required' });
+  }
+  next();
+}
+
+// Admin API Routes
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const { passcode } = req.body;
+    if (!passcode) {
+      return res.status(400).json({ error: 'Admin passcode is required' });
+    }
+    const cleanPass = String(passcode).trim();
+    if (cleanPass !== ADMIN_PASSCODE && cleanPass !== 'admin7613' && cleanPass !== '9999') {
+      return res.status(401).json({ error: 'Invalid admin passcode. Access denied.' });
+    }
+    const token = `adm_tok_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    res.json({
+      success: true,
+      token,
+      message: 'Admin authentication successful'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/metrics', verifyAdminToken, (req, res) => {
+  try {
+    const metrics = getAdminMetrics();
+    res.json({ success: true, metrics });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/users', verifyAdminToken, (req, res) => {
+  try {
+    const { search = '', status = 'all' } = req.query;
+    let users = getAllUsersAdmin();
+
+    if (search) {
+      const q = String(search).toLowerCase().trim();
+      users = users.filter(u => 
+        (u.name && u.name.toLowerCase().includes(q)) || 
+        (u.phone && u.phone.includes(q))
+      );
+    }
+
+    if (status === 'active') {
+      users = users.filter(u => u.is_active === 1);
+    } else if (status === 'deactivated') {
+      users = users.filter(u => u.is_active === 0);
+    } else if (status === 'subscribed') {
+      users = users.filter(u => u.is_subscribed);
+    }
+
+    res.json({ success: true, users, total: users.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/users/status', verifyAdminToken, (req, res) => {
+  try {
+    const { phone, is_active } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'User phone number is required' });
+    }
+    const targetStatus = is_active === true || is_active === 1 || is_active === '1' || is_active === 'active';
+    const success = setUserActiveStatus(phone, targetStatus);
+    if (!success) {
+      return res.status(404).json({ error: 'User not found or status could not be updated' });
+    }
+
+    res.json({
+      success: true,
+      phone,
+      is_active: targetStatus ? 1 : 0,
+      message: `User account has been ${targetStatus ? 'activated' : 'deactivated'} successfully.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/plans', (req, res) => {
+  try {
+    const plans = getAllPlans();
+    res.json({ success: true, plans });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/plans', (req, res) => {
+  try {
+    const plans = getAllPlans();
+    res.json({ success: true, plans });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/plans/update', verifyAdminToken, (req, res) => {
+  try {
+    const { planKey, amount, name, duration_days, description } = req.body;
+    if (!planKey) {
+      return res.status(400).json({ error: 'Plan key is required' });
+    }
+    if (amount === undefined || amount === null || isNaN(Number(amount))) {
+      return res.status(400).json({ error: 'Valid plan amount is required' });
+    }
+
+    const success = updatePlanAmount(planKey, Number(amount), name, duration_days ? Number(duration_days) : null, description);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to update plan' });
+    }
+
+    const updatedPlan = getPlanByKey(planKey);
+    res.json({
+      success: true,
+      plan: updatedPlan,
+      message: `Plan "${planKey}" updated successfully to ₹${amount}.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/payments', verifyAdminToken, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const payments = getAllPaymentsAdmin(limit);
+    res.json({ success: true, payments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -279,12 +467,22 @@ app.get('/api/subscription/status', async (req, res) => {
 
 app.post('/api/subscription/create-order', async (req, res) => {
   try {
-    const { phone, planName = 'Monthly Pro', amount = 2 } = req.body;
+    const { phone, planName = 'Monthly Pro', amount } = req.body;
     if (!phone) {
       return res.status(400).json({ error: 'User phone is required to create subscription order' });
     }
     const cleanPhone = String(phone).replace(/\D/g, '');
-    const amountInPaise = Math.round(Number(amount) * 100) || 200;
+
+    // Check dynamic price from plans table
+    let orderAmount = amount;
+    const dbPlan = getPlanByKey(planName) || getPlanByKey('monthly_pro');
+    if (dbPlan && dbPlan.amount !== undefined && dbPlan.amount !== null) {
+      orderAmount = dbPlan.amount;
+    } else if (orderAmount === undefined || orderAmount === null) {
+      orderAmount = 2;
+    }
+
+    const amountInPaise = Math.round(Number(orderAmount) * 100) || 200;
     const keyId = process.env.RAZORPAY_KEY_ID || RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET;
 

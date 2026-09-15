@@ -712,6 +712,12 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(data.error || 'Failed to verify phone number');
         }
 
+        if (data.isDeactivated) {
+          alert('⚠️ Account Deactivated\n\nYour account has been deactivated by the administrator.\nPlease contact admin at support@pickmicabs.com to reactivate your access.');
+          showAuthStep('phone');
+          return;
+        }
+
         if (data.exists && data.hasPasscode) {
           if (authLoginUserName) authLoginUserName.textContent = data.name || 'User';
           showAuthStep('login');
@@ -775,6 +781,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
+          if (data.isDeactivated) {
+            alert('⚠️ Account Deactivated\n\n' + (data.error || 'Your account has been deactivated. Please contact the administrator.'));
+            showAuthStep('phone');
+            return;
+          }
           if (data.needsPasscodeSetup) {
             alert('No passcode was set for this account yet. Please set one now.');
             showAuthStep('reset');
@@ -3923,10 +3934,14 @@ document.addEventListener('DOMContentLoaded', () => {
           currentUser = data.user;
           setStoredUser(currentUser);
         }
-      } else if (res.status === 404) {
-        // User not in DB (e.g. after fresh database reset)
+      } else if (res.status === 403 || res.status === 404) {
+        // User deactivated or not in DB
+        const data = await res.json().catch(() => ({}));
         clearStoredUser();
         showAuthStep('phone');
+        if (data.isDeactivated) {
+          alert('⚠️ Account Deactivated\n\n' + (data.error || 'Your account has been deactivated by administrator. Please contact admin.'));
+        }
         return;
       }
     } catch (e) {

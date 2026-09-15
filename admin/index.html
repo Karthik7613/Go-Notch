@@ -291,27 +291,93 @@
       </section>
 
       <!-- ================= TAB 4: PAYMENTS & AUDIT ================= -->
-      <section id="tab-payments" class="admin-tab-content hidden space-y-4">
-        <div>
-          <h2 class="text-base font-bold text-white">Payment Records & Audit Logs</h2>
-          <p class="text-xs text-slate-400">Live transaction history from Razorpay and user subscriptions.</p>
+      <section id="tab-payments" class="admin-tab-content hidden space-y-5">
+        
+        <!-- Razorpay Gateway Health Card -->
+        <div class="bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900 border border-blue-900/40 rounded-3xl p-6 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <i data-lucide="credit-card" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white">Razorpay Payment Gateway</h3>
+                  <span id="razorpayModeBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Live Mode</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">Automated UPI, Cards & Netbanking Checkout for Pro Subscriptions</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="checkRazorpayBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Check API Health</span>
+              </button>
+              <button id="syncRazorpayBtn" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-semibold rounded-xl transition shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Sync Live Payments</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80 text-xs">
+            <div>
+              <span class="text-slate-500 block text-[11px]">API Key ID</span>
+              <span id="razorpayKeyIdDisplay" class="font-mono font-semibold text-slate-300">rzp_live_...</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[11px]">Gateway Status</span>
+              <span id="razorpayStatusDisplay" class="font-semibold text-emerald-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Connected
+              </span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[11px]">Total Paid Revenue</span>
+              <span id="paymentsTotalPaid" class="font-mono font-bold text-white">₹0</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[11px]">Total Transactions</span>
+              <span id="paymentsTotalCount" class="font-semibold text-white">0</span>
+            </div>
+          </div>
         </div>
 
+        <!-- Controls: Search & Filter Chips -->
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="paymentSearchInput" placeholder="Search order ID, payment ID, or mobile..." class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition">
+          </div>
+
+          <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button data-payment-filter="all" class="payment-filter-btn active px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer">All</button>
+            <button data-payment-filter="captured" class="payment-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-emerald-400">Captured / Paid</button>
+            <button data-payment-filter="created" class="payment-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-amber-400">Created</button>
+            <button data-payment-filter="failed" class="payment-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-rose-400">Failed</button>
+          </div>
+        </div>
+
+        <!-- Payments Table -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="border-b border-slate-800 bg-slate-950/50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  <th class="py-3.5 px-4">Transaction / Order ID</th>
+                  <th class="py-3.5 px-4">Order / Payment ID</th>
                   <th class="py-3.5 px-4">User</th>
                   <th class="py-3.5 px-4">Amount</th>
+                  <th class="py-3.5 px-4">Payment Method</th>
                   <th class="py-3.5 px-4">Status</th>
                   <th class="py-3.5 px-4">Date</th>
                 </tr>
               </thead>
               <tbody id="paymentsTableBody" class="divide-y divide-slate-800/60 text-xs">
                 <tr>
-                  <td colspan="5" class="py-8 text-center text-slate-500">Loading payments...</td>
+                  <td colspan="6" class="py-8 text-center text-slate-500">
+                    <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Loading payments...
+                  </td>
                 </tr>
               </tbody>
             </table>

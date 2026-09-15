@@ -444,6 +444,128 @@ app.get('/api/admin/payments', verifyAdminToken, (req, res) => {
   }
 });
 
+// Admin Razorpay Gateway Health Check
+app.get('/api/admin/razorpay/check', verifyAdminToken, async (req, res) => {
+  try {
+    const keyId = (process.env.RAZORPAY_KEY_ID || RAZORPAY_KEY_ID || '').trim();
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET || '').trim();
+
+    if (!keyId || !keySecret || keyId.startsWith('rzp_test_GoNotchTrip') || keySecret.startsWith('secret_test_key')) {
+      return res.json({
+        success: false,
+        configured: false,
+        mode: 'unconfigured',
+        key_id_masked: 'Not Configured',
+        status: 'error',
+        error: 'Razorpay keys not properly configured in environment.'
+      });
+    }
+
+    const isLive = keyId.startsWith('rzp_live_');
+    const masked = keyId.length > 8 ? `${keyId.substring(0, 8)}...${keyId.substring(keyId.length - 4)}` : keyId;
+    const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+
+    // Test API connectivity
+    const rzpRes = await fetch('https://api.razorpay.com/v1/payments?count=5', {
+      method: 'GET',
+      headers: { 'Authorization': authHeader }
+    });
+
+    const rzpData = await rzpRes.json();
+    if (!rzpRes.ok) {
+      return res.json({
+        success: false,
+        configured: true,
+        mode: isLive ? 'live' : 'test',
+        key_id_masked: masked,
+        status: 'error',
+        error: rzpData.error?.description || 'Failed to authenticate with Razorpay API'
+      });
+    }
+
+    res.json({
+      success: true,
+      configured: true,
+      mode: isLive ? 'live' : 'test',
+      key_id_masked: masked,
+      status: 'connected',
+      live_payments_count: rzpData.count || (rzpData.items ? rzpData.items.length : 0),
+      message: 'Razorpay Gateway is active and connected'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Live Sync Razorpay Payments
+app.post('/api/admin/razorpay/sync', verifyAdminToken, async (req, res) => {
+  try {
+    const keyId = (process.env.RAZORPAY_KEY_ID || RAZORPAY_KEY_ID || '').trim();
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET || '').trim();
+
+    if (!keyId || !keySecret) {
+      return res.status(400).json({ error: 'Razorpay API credentials not configured' });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const rzpRes = await fetch('https://api.razorpay.com/v1/payments?count=50', {
+      method: 'GET',
+      headers: { 'Authorization': authHeader }
+    });
+
+    const rzpData = await rzpRes.json();
+    if (!rzpRes.ok) {
+      return res.status(500).json({ error: rzpData.error?.description || 'Failed to fetch payments from Razorpay' });
+    }
+
+    const items = rzpData.items || [];
+    let synced = 0;
+
+    for (const item of items) {
+      const phone = (item.notes && item.notes.phone) ? item.notes.phone : (item.contact || '');
+      const cleanPhone = String(phone).replace(/\D/g, '');
+      const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+      const orderId = item.order_id || `rzp_${item.id}`;
+      const status = item.status === 'captured' ? 'captured' : (item.status === 'failed' ? 'failed' : item.status);
+      const amountPaise = item.amount || 0;
+      const amountInRupees = amountPaise > 500 ? Math.round(amountPaise / 100) : amountPaise;
+
+      if (p10) {
+        recordPayment({
+          userPhone: p10,
+          orderId: orderId,
+          paymentId: item.id,
+          amount: amountPaise,
+          currency: item.currency || 'INR',
+          status: status,
+          method: item.method || 'razorpay'
+        });
+
+        if (status === 'captured') {
+          const planName = (item.notes && item.notes.plan) || 'Monthly Pro';
+          createOrUpdateSubscription(p10, {
+            planName: planName,
+            planPrice: amountInRupees,
+            days: 30,
+            paymentId: item.id,
+            orderId: orderId
+          });
+        }
+        synced++;
+      }
+    }
+
+    res.json({
+      success: true,
+      synced,
+      totalFetched: items.length,
+      message: `Successfully synced ${synced} payments from Razorpay.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Subscription & Razorpay Payment API Routes (₹2/month Plan)
 app.get('/api/subscription/status', async (req, res) => {
   try {

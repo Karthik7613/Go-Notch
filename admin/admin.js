@@ -205,7 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
       loadMetrics(),
       loadUsers(),
       loadPlans(),
-      loadPayments()
+      loadPayments(),
+      checkRazorpayHealth(false)
     ]);
   }
 
@@ -526,28 +527,160 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Payments & Audit Log ---
+  // --- Razorpay Gateway & Payments Logic ---
+  let paymentsData = [];
+  let currentPaymentFilter = 'all';
+
+  const checkRazorpayBtn = document.getElementById('checkRazorpayBtn');
+  const syncRazorpayBtn = document.getElementById('syncRazorpayBtn');
+  const razorpayKeyIdDisplay = document.getElementById('razorpayKeyIdDisplay');
+  const razorpayStatusDisplay = document.getElementById('razorpayStatusDisplay');
+  const razorpayModeBadge = document.getElementById('razorpayModeBadge');
+  const paymentsTotalPaid = document.getElementById('paymentsTotalPaid');
+  const paymentsTotalCount = document.getElementById('paymentsTotalCount');
+  const paymentSearchInput = document.getElementById('paymentSearchInput');
+  const paymentFilterButtons = document.querySelectorAll('.payment-filter-btn');
+
+  async function checkRazorpayHealth(showToastMsg = true) {
+    if (checkRazorpayBtn) {
+      checkRazorpayBtn.disabled = true;
+      checkRazorpayBtn.innerHTML = `<div class="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div><span>Checking...</span>`;
+    }
+
+    try {
+      const res = await adminFetch('/api/admin/razorpay/check');
+      const data = await res.json();
+
+      if (razorpayKeyIdDisplay) razorpayKeyIdDisplay.textContent = data.key_id_masked || 'Not Configured';
+
+      if (razorpayModeBadge) {
+        if (data.mode === 'live') {
+          razorpayModeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          razorpayModeBadge.textContent = 'Live Mode';
+        } else if (data.mode === 'test') {
+          razorpayModeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          razorpayModeBadge.textContent = 'Test Mode';
+        } else {
+          razorpayModeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30';
+          razorpayModeBadge.textContent = 'Unconfigured';
+        }
+      }
+
+      if (razorpayStatusDisplay) {
+        if (data.status === 'connected') {
+          razorpayStatusDisplay.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Connected`;
+          razorpayStatusDisplay.className = 'font-semibold text-emerald-400 flex items-center gap-1';
+        } else {
+          razorpayStatusDisplay.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Error`;
+          razorpayStatusDisplay.className = 'font-semibold text-rose-400 flex items-center gap-1';
+        }
+      }
+
+      if (showToastMsg) {
+        if (data.status === 'connected') {
+          showToast(`Razorpay Gateway Connected (${data.mode.toUpperCase()} Mode)`);
+        } else {
+          showToast(`Razorpay Error: ${data.error || 'Connection failed'}`, 'error');
+        }
+      }
+    } catch (err) {
+      if (showToastMsg) showToast('Failed to check Razorpay status: ' + err.message, 'error');
+    } finally {
+      if (checkRazorpayBtn) {
+        checkRazorpayBtn.disabled = false;
+        checkRazorpayBtn.innerHTML = `<i data-lucide="activity" class="w-3.5 h-3.5 text-blue-400"></i><span>Check API Health</span>`;
+        safeCreateIcons();
+      }
+    }
+  }
+
+  async function syncRazorpayPayments() {
+    if (syncRazorpayBtn) {
+      syncRazorpayBtn.disabled = true;
+      syncRazorpayBtn.innerHTML = `<div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Syncing...</span>`;
+    }
+
+    try {
+      const res = await adminFetch('/api/admin/razorpay/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Sync failed');
+      }
+
+      showToast(data.message || `Synced payments from Razorpay successfully!`);
+      await loadPayments();
+      await loadMetrics();
+    } catch (err) {
+      showToast('Razorpay sync error: ' + err.message, 'error');
+    } finally {
+      if (syncRazorpayBtn) {
+        syncRazorpayBtn.disabled = false;
+        syncRazorpayBtn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i><span>Sync Live Payments</span>`;
+        safeCreateIcons();
+      }
+    }
+  }
+
+  if (checkRazorpayBtn) checkRazorpayBtn.addEventListener('click', () => checkRazorpayHealth(true));
+  if (syncRazorpayBtn) syncRazorpayBtn.addEventListener('click', syncRazorpayPayments);
+
   async function loadPayments() {
     try {
       const res = await adminFetch('/api/admin/payments');
       if (res.ok) {
         const data = await res.json();
-        const payments = data.payments || [];
-        renderPaymentsTable(payments);
+        paymentsData = data.payments || [];
+        renderPaymentsSummary();
+        renderPaymentsTable();
       }
     } catch (e) {
       console.error('loadPayments error:', e);
     }
   }
 
-  function renderPaymentsTable(payments) {
+  function renderPaymentsSummary() {
+    let totalPaidAmt = 0;
+    paymentsData.forEach(p => {
+      const isPaid = p.status === 'captured' || p.status === 'success' || p.status === 'paid';
+      if (isPaid) {
+        const amt = p.amount > 500 ? Math.round(p.amount / 100) : p.amount;
+        totalPaidAmt += amt;
+      }
+    });
+
+    if (paymentsTotalPaid) paymentsTotalPaid.textContent = `₹${totalPaidAmt.toLocaleString()}`;
+    if (paymentsTotalCount) paymentsTotalCount.textContent = paymentsData.length;
+  }
+
+  function renderPaymentsTable() {
     if (!paymentsTableBody) return;
-    if (payments.length === 0) {
+    const query = paymentSearchInput ? paymentSearchInput.value.trim().toLowerCase() : '';
+
+    let filtered = [...paymentsData];
+
+    if (query) {
+      filtered = filtered.filter(p => 
+        (p.order_id && p.order_id.toLowerCase().includes(query)) ||
+        (p.payment_id && p.payment_id.toLowerCase().includes(query)) ||
+        (p.user_phone && p.user_phone.includes(query)) ||
+        (p.user_name && p.user_name.toLowerCase().includes(query))
+      );
+    }
+
+    if (currentPaymentFilter === 'captured') {
+      filtered = filtered.filter(p => p.status === 'captured' || p.status === 'success' || p.status === 'paid');
+    } else if (currentPaymentFilter === 'created') {
+      filtered = filtered.filter(p => p.status === 'created' || p.status === 'pending');
+    } else if (currentPaymentFilter === 'failed') {
+      filtered = filtered.filter(p => p.status === 'failed' || p.status === 'error');
+    }
+
+    if (filtered.length === 0) {
       paymentsTableBody.innerHTML = `
         <tr>
-          <td colspan="5" class="py-12 text-center text-slate-500">
+          <td colspan="6" class="py-12 text-center text-slate-500">
             <i data-lucide="receipt" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
-            <p class="font-medium">No payment transactions recorded yet.</p>
+            <p class="font-medium">No payment records found matching your filters.</p>
           </td>
         </tr>
       `;
@@ -555,34 +688,46 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    paymentsTableBody.innerHTML = payments.map(p => {
+    paymentsTableBody.innerHTML = filtered.map(p => {
       const isPaid = p.status === 'captured' || p.status === 'success' || p.status === 'paid';
-      const dateStr = p.created_at ? new Date(p.created_at * 1000).toLocaleString('en-IN') : '-';
+      const isFailed = p.status === 'failed' || p.status === 'error';
+      const dateStr = p.created_at ? new Date(p.created_at * 1000).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
       const amtInRupees = p.amount > 500 ? Math.round(p.amount / 100) : p.amount;
+      const cleanPhone = String(p.user_phone || '').slice(-10);
 
       return `
         <tr class="hover:bg-slate-800/40 transition">
-          <td class="py-3.5 px-4 font-mono font-medium text-white">
-            <div>${p.order_id || '-'}</div>
-            <div class="text-[10px] text-slate-500">${p.payment_id || 'Pending Payment'}</div>
+          <td class="py-3.5 px-4 font-mono">
+            <div class="font-semibold text-white text-xs">${p.order_id || '-'}</div>
+            <div class="text-[10px] text-slate-400 font-normal mt-0.5 flex items-center gap-1">
+              <span>${p.payment_id || 'Awaiting Payment'}</span>
+            </div>
           </td>
           <td class="py-3.5 px-4">
             <div class="font-semibold text-white">${p.user_name || 'User'}</div>
-            <div class="text-[11px] font-mono text-slate-400">+91 ${String(p.user_phone || '').slice(-10)}</div>
+            <div class="text-[11px] font-mono text-slate-400">+91 ${cleanPhone}</div>
           </td>
           <td class="py-3.5 px-4 font-mono font-bold text-white text-sm">
             ₹${amtInRupees}
           </td>
           <td class="py-3.5 px-4">
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 uppercase">
+              ${p.method || 'UPI / Razorpay'}
+            </span>
+          </td>
+          <td class="py-3.5 px-4">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
               isPaid 
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                : (isFailed 
+                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20')
             }">
+              <span class="w-1.5 h-1.5 rounded-full ${isPaid ? 'bg-emerald-400' : (isFailed ? 'bg-rose-400' : 'bg-amber-400')}"></span>
               ${p.status}
             </span>
           </td>
-          <td class="py-3.5 px-4 text-slate-400 text-[11px]">
+          <td class="py-3.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
             ${dateStr}
           </td>
         </tr>
@@ -590,6 +735,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
 
     safeCreateIcons();
+  }
+
+  paymentFilterButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      paymentFilterButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPaymentFilter = btn.getAttribute('data-payment-filter');
+      renderPaymentsTable();
+    });
+  });
+
+  if (paymentSearchInput) {
+    paymentSearchInput.addEventListener('input', renderPaymentsTable);
   }
 
   // --- Initial Startup Check ---

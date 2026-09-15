@@ -2885,20 +2885,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 5-Second Alert Ring (repeats every 1.5s for 5s until user attends)
-  function playAlertChime(durationMs = 5000) {
+  // 2-Second Alert Ring (repeats for 2s until user attends)
+  function playAlertChime(durationMs = 2000) {
     if (!soundAlertsEnabled) return;
     stopAlertSoundLoop();
 
     // Play immediately
     playAlertChimeSingle();
 
-    // Repeat every 1.5s for 5 seconds
+    // Repeat every 1.0s for 2 seconds
     alertSoundInterval = setInterval(() => {
       playAlertChimeSingle();
-    }, 1500);
+    }, 1000);
 
-    // Auto-stop after exactly 5 seconds
+    // Auto-stop after exactly 2 seconds
     alertSoundStopTimer = setTimeout(() => {
       stopAlertSoundLoop();
     }, durationMs);

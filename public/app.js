@@ -253,6 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
           qrServerStatus.textContent = 'Server Online';
           qrServerStatus.className = 'font-bold text-emerald-500';
         }
+        if (currentUser && currentUser.phone) {
+          socket.emit('register_user', currentUser.phone);
+        }
         loadStats();
         loadThreads();
         loadKeywords();
@@ -647,6 +650,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Helper to post-login initialization
   async function handleSuccessfulLogin(user, token) {
     setStoredUser(user, token);
+    if (socket && user && user.phone) {
+      socket.emit('register_user', user.phone);
+    }
     hideAuthModal();
     await fetchSubscriptionStatus();
     switchTab('dashboard');
@@ -1525,8 +1531,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTrips = Object.values(savedMap).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     const unSavedAlerts = (alerts || []).filter(msg => !savedMap[String(msg.message_id)]);
 
-    // Check for freshly arrived alerts to trigger sound & notification
-    if (!isFirstAlertLoad && Array.isArray(unSavedAlerts)) {
+    // Check for freshly arrived alerts to trigger sound & notification ONLY if user has include keywords
+    const userIncludes = (activeKeywords && Array.isArray(activeKeywords.include)) ? activeKeywords.include : [];
+    if (!isFirstAlertLoad && Array.isArray(unSavedAlerts) && userIncludes.length > 0) {
       unSavedAlerts.forEach(msg => {
         const id = String(msg.message_id);
         if (id && !knownAlertIds.has(id)) {
@@ -3211,6 +3218,26 @@ document.addEventListener('DOMContentLoaded', () => {
   function triggerMatchAlert(msg) {
     if (!msg) return;
 
+    // CRITICAL CHECK: Only trigger notification if current user has active include keywords!
+    const incList = (activeKeywords && Array.isArray(activeKeywords.include)) ? activeKeywords.include : [];
+    if (!incList || incList.length === 0) {
+      // User has deleted all include keywords -> do NOT trigger sound, popup or notification
+      return;
+    }
+
+    const excList = (activeKeywords && Array.isArray(activeKeywords.exclude)) ? activeKeywords.exclude : [];
+    const fullText = `${msg.content || ''} ${msg.ai_transcript || ''} ${msg.ai_translation || ''} ${msg.chat_name || ''} ${msg.sender_name || ''}`.toLowerCase();
+
+    // Check if message matches any exclude keywords
+    const hasExclude = excList.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+    if (hasExclude) return;
+
+    // Check if message matches any include keywords
+    const matched = incList.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+    if (matched.length === 0) return;
+
+    msg.matched_keywords = matched;
+
     // 1. Play triple-tone harmonic attention sound
     playAlertChime();
 
@@ -3230,7 +3257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.hidden) {
       if (titleFlashInterval) clearInterval(titleFlashInterval);
       let flashState = false;
-      const kw = (msg.matched_keywords || [])[0] || 'MATCH';
+      const kw = matched[0] || 'TRIP MATCH';
       titleFlashInterval = setInterval(() => {
         document.title = flashState ? `🔔 (1) 🎯 MATCH: ${kw}!` : originalTitle;
         flashState = !flashState;
@@ -3881,6 +3908,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hideAuthModal();
     renderUserProfile(currentUser);
+    if (socket && currentUser && currentUser.phone) {
+      socket.emit('register_user', currentUser.phone);
+    }
     await fetchSubscriptionStatus();
     switchTab('dashboard');
     loadStats();

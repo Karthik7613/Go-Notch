@@ -714,7 +714,9 @@ function removeKeyword(keyword, type = 'include', userPhone = '') {
   const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '') : '';
   
   if (cleanPhone) {
-    ensureUserHasKeywords(cleanPhone);
+    try {
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, '1')").run(`kw_init_${cleanPhone}`);
+    } catch (e) {}
   }
 
   try {
@@ -758,14 +760,11 @@ function getKeywords(userPhone = '') {
       rows = db.prepare("SELECT DISTINCT LOWER(keyword) as keyword, COALESCE(type, 'include') as type FROM keywords WHERE user_phone = '' OR user_phone IS NULL ORDER BY id ASC").all();
     }
     const include = [...new Set(rows.filter(r => r.type === 'include').map(r => r.keyword.trim()))];
-    let exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
-    if (!cleanPhone && exclude.length === 0) {
-      exclude = [...DEFAULT_EXCLUDE_KEYWORDS];
-    }
+    const exclude = [...new Set(rows.filter(r => r.type === 'exclude').map(r => r.keyword.trim()))];
     return { include, exclude };
   } catch (e) {
     console.error('getKeywords error:', e.message);
-    return { include: [], exclude: cleanPhone ? [] : [...DEFAULT_EXCLUDE_KEYWORDS] };
+    return { include: [], exclude: [] };
   }
 }
 

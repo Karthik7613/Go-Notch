@@ -85,6 +85,15 @@ setSocketIO(io);
 io.on('connection', (socket) => {
   console.log('⚡ Client connected to Socket.io dashboard:', socket.id);
   socket.emit('status_update', getStatus());
+
+  socket.on('register_user', (phone) => {
+    if (phone) {
+      const cleanPhone = String(phone).replace(/\D/g, '');
+      if (cleanPhone) {
+        socket.join(`user_${cleanPhone}`);
+      }
+    }
+  });
 });
 
 // Authentication API Routes (Mobile Number + 4-Digit Passcode)
@@ -521,7 +530,6 @@ app.post('/api/keywords/scope', (req, res) => {
     }
     const result = setMonitoringScope(scope);
     io.emit('keywords_updated', getKeywords());
-    io.emit('keyword_alert');
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -532,13 +540,17 @@ app.post('/api/keywords', (req, res) => {
   try {
     const { keyword, type } = req.body;
     const phone = req.body.phone || req.headers['x-user-phone'] || '';
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
     if (!keyword || !keyword.trim()) {
       return res.status(400).json({ error: 'keyword parameter is required' });
     }
-    const added = addKeyword(keyword, type || 'include', phone);
-    const allKw = getKeywords(phone);
-    io.emit('keywords_updated', { phone, keywords: allKw });
-    io.emit('keyword_alert');
+    const added = addKeyword(keyword, type || 'include', cleanPhone);
+    const allKw = getKeywords(cleanPhone);
+    if (cleanPhone) {
+      io.to(`user_${cleanPhone}`).emit('keywords_updated', { phone: cleanPhone, keywords: allKw });
+    } else {
+      io.emit('keywords_updated', { phone: '', keywords: allKw });
+    }
     res.json({ success: added, keywords: allKw });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -549,10 +561,14 @@ app.delete('/api/keywords/:keyword', (req, res) => {
   try {
     const kwType = req.query.type || 'include';
     const phone = req.query.phone || req.headers['x-user-phone'] || '';
-    const removed = removeKeyword(req.params.keyword, kwType, phone);
-    const allKw = getKeywords(phone);
-    io.emit('keywords_updated', { phone, keywords: allKw });
-    io.emit('keyword_alert');
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const removed = removeKeyword(req.params.keyword, kwType, cleanPhone);
+    const allKw = getKeywords(cleanPhone);
+    if (cleanPhone) {
+      io.to(`user_${cleanPhone}`).emit('keywords_updated', { phone: cleanPhone, keywords: allKw });
+    } else {
+      io.emit('keywords_updated', { phone: '', keywords: allKw });
+    }
     res.json({ success: removed, keywords: allKw });
   } catch (err) {
     res.status(500).json({ error: err.message });

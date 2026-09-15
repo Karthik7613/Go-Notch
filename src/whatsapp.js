@@ -28,8 +28,6 @@ const groupNameCache = new Map();
 
 function checkAndEmitKeywordAlert(msgData) {
   if (!ioInstance || !msgData) return;
-  const { include, exclude } = getAllActiveKeywords();
-  if (!include || include.length === 0) return;
 
   const { scope, since } = getMonitoringScope();
   if (scope === 'upcoming' && since > 0 && Number(msgData.timestamp) < (since - 120)) {
@@ -37,17 +35,45 @@ function checkAndEmitKeywordAlert(msgData) {
   }
 
   const fullText = `${msgData.content || ''} ${msgData.ai_transcript || ''} ${msgData.ai_translation || ''} ${msgData.chat_name || ''} ${msgData.sender_name || ''}`.toLowerCase();
-  
-  // Skip if message contains any excluded keywords (e.g. "vacant", "vacant chennai")
-  const hasExclude = exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
-  if (hasExclude) return;
 
-  const matched = include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
-  if (matched.length > 0) {
-    ioInstance.emit('keyword_alert', {
-      ...msgData,
-      matched_keywords: matched
-    });
+  try {
+    // Find all distinct users who have keywords in DB
+    const userRows = db.prepare("SELECT DISTINCT user_phone FROM keywords WHERE user_phone != '' AND user_phone IS NOT NULL").all();
+    const allPhones = [...new Set(userRows.map(r => r.user_phone).filter(Boolean))];
+
+    for (const phone of allPhones) {
+      const { include, exclude } = getKeywords(phone);
+      if (!include || include.length === 0) continue;
+
+      const hasExclude = exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+      if (hasExclude) continue;
+
+      const matched = include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+      if (matched.length > 0) {
+        // Emit targeted alert ONLY to this specific user's socket room
+        ioInstance.to(`user_${phone}`).emit('keyword_alert', {
+          ...msgData,
+          matched_keywords: matched
+        });
+      }
+    }
+
+    // Also check global/unassigned keywords if any
+    const globalKw = getKeywords('');
+    if (globalKw && globalKw.include && globalKw.include.length > 0) {
+      const hasExcludeGlobal = globalKw.exclude.some(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+      if (!hasExcludeGlobal) {
+        const matchedGlobal = globalKw.include.filter(kw => kw && fullText.includes(kw.toLowerCase().trim()));
+        if (matchedGlobal.length > 0) {
+          ioInstance.to('user_').emit('keyword_alert', {
+            ...msgData,
+            matched_keywords: matchedGlobal
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('checkAndEmitKeywordAlert error:', e.message);
   }
 }
 

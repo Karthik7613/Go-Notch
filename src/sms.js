@@ -1,4 +1,9 @@
 const https = require('https');
+const path = require('path');
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+} catch (e) {}
+require('dotenv').config();
 
 // Keep-alive agent to eliminate repeated TLS handshake latency to Fast2SMS
 const httpsAgent = new https.Agent({
@@ -12,7 +17,7 @@ const httpsAgent = new https.Agent({
  * Docs: https://www.fast2sms.com/dashboard/api-docs
  */
 
-const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || '';
+const DEFAULT_FAST2SMS_KEY = 'gWc6XFhGe5ZYpNoPd8ktrVB3TzjD4HJflw1QCESiALa2sRn79uDaf56BpSbjyQn7WALs9MP3x8EvwkuC';
 // Fast2SMS dedicated "otp" route requires website/DLT verification on their dashboard.
 // Default to quick transactional route ('q') for instant ~300ms delivery.
 let isOtpRouteVerified = false;
@@ -25,7 +30,7 @@ let isOtpRouteVerified = false;
  */
 async function sendSMSOtp(phone, otp) {
   const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
-  const apiKey = (process.env.FAST2SMS_API_KEY || FAST2SMS_API_KEY).trim();
+  const apiKey = (process.env.FAST2SMS_API_KEY || DEFAULT_FAST2SMS_KEY).trim();
 
   if (!apiKey) {
     return {

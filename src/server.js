@@ -133,17 +133,16 @@ app.post('/api/auth/send-otp', async (req, res) => {
     // Save to database with 5 minutes TTL (300 seconds)
     saveOtp(cleanPhone, otp, 300);
 
-    // Send Real SMS via Fast2SMS
-    const smsResult = await sendSMSOtp(cleanPhone, otp);
-
-    if (!smsResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: smsResult.message || 'Failed to deliver SMS. Please verify your mobile number.'
-      });
+    // 1. Send SMS via Fast2SMS
+    let smsResult = { success: false };
+    try {
+      smsResult = await sendSMSOtp(cleanPhone, otp);
+    } catch (smsErr) {
+      console.warn('sendSMSOtp error:', smsErr.message);
     }
 
-    // Also send via WhatsApp message directly to the mobile phone asynchronously in background (non-blocking)
+    // 2. Also send via WhatsApp message directly to mobile phone in background
+    let waSent = false;
     try {
       const waStatus = getStatus();
       if (waStatus && waStatus.status === 'connected') {
@@ -151,13 +150,24 @@ app.post('/api/auth/send-otp', async (req, res) => {
         sendWhatsAppMessage(targetJid, `🔐 *Go-Notch Trip Monitor*\n\nYour OTP verification code is: *${otp}*\n\nValid for 5 minutes. Do not share this code with anyone.`)
           .then(() => console.log(`✅ [WhatsApp OTP] Verification code sent to ${targetJid}`))
           .catch(waErr => console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message));
+        waSent = true;
       }
     } catch (waErr) {
       console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message);
     }
+
+    if (!smsResult.success && !waSent) {
+      return res.status(500).json({
+        success: false,
+        error: smsResult.message || 'Failed to deliver SMS. Please verify your mobile number.'
+      });
+    }
+
     res.json({
       success: true,
-      message: `SMS OTP sent successfully to +91 ${cleanPhone}`,
+      message: smsResult.success
+        ? `SMS OTP sent successfully to +91 ${cleanPhone}`
+        : `OTP sent to your WhatsApp (+91 ${cleanPhone})`,
       phone: cleanPhone,
       exists: Boolean(existingUser),
       name: existingUser?.name || ''
@@ -250,15 +260,14 @@ app.post('/api/auth/resend-otp', async (req, res) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     saveOtp(cleanPhone, otp, 300);
 
-    const smsResult = await sendSMSOtp(cleanPhone, otp);
-
-    if (!smsResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: smsResult.message || 'Failed to deliver SMS. Please try again.'
-      });
+    let smsResult = { success: false };
+    try {
+      smsResult = await sendSMSOtp(cleanPhone, otp);
+    } catch (smsErr) {
+      console.warn('resend sendSMSOtp error:', smsErr.message);
     }
 
+    let waSent = false;
     try {
       const waStatus = getStatus();
       if (waStatus && waStatus.status === 'connected') {
@@ -266,12 +275,22 @@ app.post('/api/auth/resend-otp', async (req, res) => {
         sendWhatsAppMessage(targetJid, `🔐 *Go-Notch Trip Monitor*\n\nYour new OTP verification code is: *${otp}*\n\nValid for 5 minutes.`)
           .then(() => console.log(`✅ [WhatsApp OTP] Resend code sent to ${targetJid}`))
           .catch(waErr => console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message));
+        waSent = true;
       }
     } catch (waErr) {}
 
+    if (!smsResult.success && !waSent) {
+      return res.status(500).json({
+        success: false,
+        error: smsResult.message || 'Failed to deliver SMS. Please try again.'
+      });
+    }
+
     res.json({
       success: true,
-      message: `New SMS OTP sent to +91 ${cleanPhone}`,
+      message: smsResult.success
+        ? `New SMS OTP sent to +91 ${cleanPhone}`
+        : `New OTP sent to your WhatsApp (+91 ${cleanPhone})`,
       phone: cleanPhone
     });
   } catch (err) {
@@ -287,7 +306,7 @@ app.post('/api/auth/check-phone', async (req, res) => {
     if (!phone) {
       return res.status(400).json({ error: 'Mobile number is required' });
     }
-    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
     if (cleanPhone.length < 10) {
       return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
@@ -332,7 +351,7 @@ app.post('/api/auth/login-passcode', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid 4-digit passcode' });
     }
 
-    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
     const user = await findUserByPhoneAsync(cleanPhone);
 
     if (!user) {
@@ -374,7 +393,7 @@ app.post('/api/auth/register-passcode', (req, res) => {
     if (!phone) {
       return res.status(400).json({ error: 'Mobile number is required' });
     }
-    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
     if (cleanPhone.length < 10) {
       return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
@@ -409,7 +428,7 @@ app.post('/api/auth/reset-passcode', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid 4-digit numeric passcode' });
     }
 
-    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
     const cleanPasscode = String(passcode).trim();
 
     const existingUser = await findUserByPhoneAsync(cleanPhone);

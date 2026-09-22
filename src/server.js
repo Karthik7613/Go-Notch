@@ -61,8 +61,8 @@ const {
 } = require('./whatsapp');
 const { transcribeAndTranslateAudio } = require('./ai');
 
-const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || 'rzp_live_Tbvz9tjiGE4r0y').trim();
-const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '06jPbgSdbo7Xnlq2ZAYdJwYG').trim();
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || 'rzp_live_Tf6895sFbOnxO8').trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '0h7vC8Uxn1jP30l45RPOIrXb').trim();
 const ADMIN_PASSCODE = (process.env.ADMIN_PASSCODE || 'admin7613').trim();
 
 const app = express();

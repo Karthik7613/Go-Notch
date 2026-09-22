@@ -3505,7 +3505,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // RAZORPAY SUBSCRIPTION & ACCESS PAYWALL ENGINE (₹49/month Plan)
   // =========================================================================
   let userSubscription = null;
-  let razorpayKeyId = 'rzp_live_Tbvz9tjiGE4r0y';
+  let razorpayKeyId = 'rzp_live_Tf6895sFbOnxO8';
 
   const paywallModal = document.getElementById('paywallModal');
   const paywallPayWithRazorpayBtn = document.getElementById('paywallPayWithRazorpayBtn');

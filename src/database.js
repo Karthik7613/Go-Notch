@@ -987,13 +987,16 @@ async function findUserByPhoneAsync(phone) {
   if (!cleanPhone) return null;
   const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
 
-  // 1. Check cloud database (Supabase) FIRST to always sync latest user name/profile
+  // 1. Check local SQLite cache first for instant 0ms response
+  const localUser = findUserByPhone(p10);
+  if (localUser) return localUser;
+
+  // 2. Check cloud database (Supabase) if not found locally
   try {
     const sbUser = await fetchUserFromSupabase(cleanPhone);
     if (sbUser && sbUser.name) {
       const now = Math.floor(Date.now() / 1000);
-      const existingLocal = findUserByPhone(p10);
-      const currentActive = existingLocal ? (existingLocal.is_active === 0 ? 0 : 1) : (sbUser.is_active !== undefined ? (sbUser.is_active ? 1 : 0) : 1);
+      const currentActive = sbUser.is_active !== undefined ? (sbUser.is_active ? 1 : 0) : 1;
 
       db.prepare(`
         INSERT INTO users (phone, name, gender, passcode, is_active, created_at, updated_at)
@@ -1018,8 +1021,7 @@ async function findUserByPhoneAsync(phone) {
     console.warn('findUserByPhoneAsync Supabase lookup exception:', e.message);
   }
 
-  // 2. Fallback to local SQLite cache
-  return findUserByPhone(cleanPhone);
+  return null;
 }
 
 function createUser(phone, name, gender = 'Male', passcode = '') {
@@ -1490,6 +1492,38 @@ function getAllPaymentsAdmin(limit = 100) {
   }
 }
 
+function getActiveUserSession() {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'active_user_phone'").get();
+    if (row && row.value) {
+      const user = findUserByPhone(row.value);
+      if (user && user.is_active !== 0) return user;
+    }
+  } catch (e) {
+    console.error('getActiveUserSession error:', e.message);
+  }
+  return null;
+}
+
+function setActiveUserSession(phone) {
+  try {
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+    if (cleanPhone) {
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('active_user_phone', ?)").run(cleanPhone);
+    }
+  } catch (e) {
+    console.error('setActiveUserSession error:', e.message);
+  }
+}
+
+function clearActiveUserSession() {
+  try {
+    db.prepare("DELETE FROM settings WHERE key = 'active_user_phone'").run();
+  } catch (e) {
+    console.error('clearActiveUserSession error:', e.message);
+  }
+}
+
 module.exports = {
   db,
   saveMessage,
@@ -1532,5 +1566,8 @@ module.exports = {
   getPlanByKey,
   updatePlanAmount,
   getAdminMetrics,
-  getAllPaymentsAdmin
+  getAllPaymentsAdmin,
+  getActiveUserSession,
+  setActiveUserSession,
+  clearActiveUserSession
 };

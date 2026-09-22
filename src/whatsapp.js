@@ -19,10 +19,31 @@ if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
 
+function loadCachedAuthCredentials() {
+  try {
+    const credsPath = path.join(authFolder, 'creds.json');
+    if (fs.existsSync(credsPath)) {
+      const credsRaw = fs.readFileSync(credsPath, 'utf8');
+      const creds = JSON.parse(credsRaw);
+      if (creds && creds.me && creds.me.id) {
+        return {
+          id: creds.me.id,
+          name: creds.me.name || 'Connected User',
+          phone: creds.me.id ? creds.me.id.split(':')[0] : ''
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read cached auth credentials:', e.message);
+  }
+  return null;
+}
+
+const initialUser = loadCachedAuthCredentials();
 let sock = null;
 let currentQr = null;
-let connectionStatus = 'disconnected';
-let userInfo = null;
+let connectionStatus = initialUser ? 'connected' : 'disconnected';
+let userInfo = initialUser;
 let ioInstance = null;
 const groupNameCache = new Map();
 

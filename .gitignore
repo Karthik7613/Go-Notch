@@ -7,4 +7,6 @@ data/
 WhatsApp_Monitor.apk
 .expo/
 scratch/
+.DS_Store
+*.db
 

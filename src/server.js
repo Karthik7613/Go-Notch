@@ -13,7 +13,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
+const { sendSMSOtp } = require('./sms');
 const { 
   getChatThreads,
   getThreadMessages,
@@ -46,7 +46,10 @@ const {
   getPlanByKey,
   updatePlanAmount,
   getAdminMetrics,
-  getAllPaymentsAdmin
+  getAllPaymentsAdmin,
+  getActiveUserSession,
+  setActiveUserSession,
+  clearActiveUserSession
 } = require('./database');
 const { 
   setSocketIO, 
@@ -103,6 +106,178 @@ io.on('connection', (socket) => {
       }
     }
   });
+});
+
+// Fast2SMS OTP Authentication Routes
+app.post('/api/auth/send-otp', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
+    }
+
+    const existingUser = await findUserByPhoneAsync(cleanPhone);
+    if (existingUser && existingUser.is_active === 0) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated. Please contact the administrator.',
+        isDeactivated: true
+      });
+    }
+
+    // Generate secure 6-digit numeric OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    // Save to database with 5 minutes TTL (300 seconds)
+    saveOtp(cleanPhone, otp, 300);
+
+    // Send Real SMS via Fast2SMS
+    const smsResult = await sendSMSOtp(cleanPhone, otp);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: smsResult.message || 'Failed to deliver SMS. Please verify your mobile number.'
+      });
+    }
+
+    // Also send via WhatsApp message directly to the mobile phone asynchronously in background (non-blocking)
+    try {
+      const waStatus = getStatus();
+      if (waStatus && waStatus.status === 'connected') {
+        const targetJid = `91${cleanPhone}@s.whatsapp.net`;
+        sendWhatsAppMessage(targetJid, `🔐 *Go-Notch Trip Monitor*\n\nYour OTP verification code is: *${otp}*\n\nValid for 5 minutes. Do not share this code with anyone.`)
+          .then(() => console.log(`✅ [WhatsApp OTP] Verification code sent to ${targetJid}`))
+          .catch(waErr => console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message));
+      }
+    } catch (waErr) {
+      console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message);
+    }
+    res.json({
+      success: true,
+      message: `SMS OTP sent successfully to +91 ${cleanPhone}`,
+      phone: cleanPhone,
+      exists: Boolean(existingUser),
+      name: existingUser?.name || ''
+    });
+  } catch (err) {
+    console.error('/api/auth/send-otp error:', err);
+    res.status(500).json({ error: err.message || 'Failed to send OTP' });
+  }
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+  try {
+    const { phone, otp, name, gender } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    if (!otp || String(otp).trim().length < 4) {
+      return res.status(400).json({ error: 'Please enter a valid OTP code' });
+    }
+
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+    const cleanOtp = String(otp).trim();
+
+    // Verify OTP against database
+    const isValid = verifyOtp(cleanPhone, cleanOtp);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid or expired OTP code. Please enter the correct code sent via SMS.' });
+    }
+
+    // Fetch or create user
+    let user = await findUserByPhoneAsync(cleanPhone);
+    let isNewUser = false;
+
+    if (user) {
+      if (user.is_active === 0) {
+        return res.status(403).json({
+          error: 'Your account has been deactivated. Please contact the administrator.',
+          isDeactivated: true
+        });
+      }
+      if (name && name.trim() && (!user.name || user.name === 'User')) {
+        user = updateUserProfile(cleanPhone, name.trim(), gender || user.gender || 'Male');
+      }
+    } else {
+      isNewUser = true;
+      const userName = (name && name.trim()) ? name.trim() : 'User';
+      user = createUser(cleanPhone, userName, gender || 'Male');
+    }
+
+    const token = `tok_${cleanPhone}_${Date.now()}`;
+    setActiveUserSession(cleanPhone);
+    res.setHeader('Set-Cookie', [
+      `auth_phone=${cleanPhone}; Path=/; Max-Age=31536000; SameSite=Lax`,
+      `auth_token=${token}; Path=/; Max-Age=31536000; SameSite=Lax`
+    ]);
+
+    res.json({
+      success: true,
+      message: isNewUser ? 'Account created successfully' : 'Login successful',
+      user,
+      token,
+      isNewUser
+    });
+  } catch (err) {
+    console.error('/api/auth/verify-otp error:', err);
+    res.status(500).json({ error: err.message || 'OTP verification failed' });
+  }
+});
+
+app.post('/api/auth/resend-otp', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
+    }
+
+    const existingUser = await findUserByPhoneAsync(cleanPhone);
+    if (existingUser && existingUser.is_active === 0) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated. Please contact the administrator.',
+        isDeactivated: true
+      });
+    }
+
+    // Generate new 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    saveOtp(cleanPhone, otp, 300);
+
+    const smsResult = await sendSMSOtp(cleanPhone, otp);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: smsResult.message || 'Failed to deliver SMS. Please try again.'
+      });
+    }
+
+    try {
+      const waStatus = getStatus();
+      if (waStatus && waStatus.status === 'connected') {
+        const targetJid = `91${cleanPhone}@s.whatsapp.net`;
+        sendWhatsAppMessage(targetJid, `🔐 *Go-Notch Trip Monitor*\n\nYour new OTP verification code is: *${otp}*\n\nValid for 5 minutes.`)
+          .then(() => console.log(`✅ [WhatsApp OTP] Resend code sent to ${targetJid}`))
+          .catch(waErr => console.log(`ℹ️ [WhatsApp OTP notice]:`, waErr.message));
+      }
+    } catch (waErr) {}
+
+    res.json({
+      success: true,
+      message: `New SMS OTP sent to +91 ${cleanPhone}`,
+      phone: cleanPhone
+    });
+  } catch (err) {
+    console.error('/api/auth/resend-otp error:', err);
+    res.status(500).json({ error: err.message || 'Failed to resend OTP' });
+  }
 });
 
 // Authentication API Routes (Mobile Number + 4-Digit Passcode)
@@ -293,7 +468,91 @@ app.post('/api/auth/update-profile', (req, res) => {
       return res.status(400).json({ error: 'Phone identifier required' });
     }
     const updated = updateUserProfile(phone, name, gender, passcode);
+    setActiveUserSession(phone);
     res.json({ success: true, user: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Auto-restore active user session across browser windows / restarts
+app.get('/api/auth/active-session', async (req, res) => {
+  try {
+    const cookieHeader = req.headers['cookie'] || '';
+    const phoneMatch = cookieHeader.match(/(?:^|;\s*)auth_phone=([^;]+)/);
+    let phone = req.query.phone || req.headers['x-user-phone'] || (phoneMatch ? phoneMatch[1] : null);
+
+    if (phone) {
+      const clean = String(phone).replace(/\D/g, '').slice(-10);
+      const user = await findUserByPhoneAsync(clean);
+      if (user && user.is_active !== 0) {
+        setActiveUserSession(clean);
+        return res.json({
+          success: true,
+          user,
+          token: `tok_${clean}_${Date.now()}`
+        });
+      }
+    }
+
+    // 2. Check active user session from server database settings
+    const activeDbUser = getActiveUserSession();
+    if (activeDbUser && activeDbUser.is_active !== 0) {
+      return res.json({
+        success: true,
+        user: activeDbUser,
+        token: `tok_${activeDbUser.phone}_${Date.now()}`
+      });
+    }
+
+    // 3. Check if WhatsApp is connected on server
+    const waStatus = getStatus();
+    if (waStatus && waStatus.user && waStatus.user.phone) {
+      const waPhone = String(waStatus.user.phone).replace(/\D/g, '').slice(-10);
+      let user = await findUserByPhoneAsync(waPhone);
+      if (!user) {
+        user = createUser(waPhone, waStatus.user.name || 'WhatsApp User', 'Male');
+      }
+      if (user && user.is_active !== 0) {
+        setActiveUserSession(waPhone);
+        return res.json({
+          success: true,
+          user,
+          token: `tok_${waPhone}_${Date.now()}`
+        });
+      }
+    }
+
+    // 4. If single user exists in DB, fallback to that user
+    const allUsers = getAllUsersAdmin();
+    const activeUsers = allUsers.filter(u => u.is_active === 1);
+    if (activeUsers.length === 1) {
+      const singleUser = activeUsers[0];
+      setActiveUserSession(singleUser.phone);
+      return res.json({
+        success: true,
+        user: singleUser,
+        token: `tok_${singleUser.phone}_${Date.now()}`
+      });
+    }
+
+    return res.status(401).json({ success: false, error: 'No active session found' });
+  } catch (err) {
+    console.error('/api/auth/active-session error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Explicit user logout (clears active session)
+app.post('/api/auth/logout', (req, res) => {
+  try {
+    clearActiveUserSession();
+    res.setHeader('Set-Cookie', [
+      'auth_phone=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax',
+      'auth_user=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax',
+      'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax'
+    ]);
+    res.json({ success: true, message: 'Logged out successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -983,10 +1242,9 @@ app.post(['/api/logout', '/api/whatsapp/disconnect'], async (req, res) => {
 });
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const HOST = '0.0.0.0';
 
-server.listen(PORT, HOST, async () => {
-  console.log(`\n🚀 WhatsApp Message Monitor Server running at http://${HOST}:${PORT}`);
+server.listen(PORT, async () => {
+  console.log(`\n🚀 WhatsApp Message Monitor Server running at http://localhost:${PORT}`);
   console.log('📱 Connecting to WhatsApp Web client...\n');
   try {
     await connectToWhatsApp();

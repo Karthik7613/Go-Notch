@@ -740,7 +740,8 @@ html.dark .gender-pill-label.active i {
   overflow-y: auto;
 }
 
-#authModal.hidden {
+#authModal.hidden,
+#qrModal.hidden {
   display: none !important;
 }
 

@@ -62,7 +62,7 @@ async function transcribeAndTranslateAudio(audioFilePath) {
     if (pcmBuffer && pcmBuffer.length > 0) {
       const float32Samples = pcmToFloat32Array(pcmBuffer);
       const transcriber = await getTranscriber();
-      const result = await transcriber(float32Samples);
+      const result = await transcriber(float32Samples, { chunk_length_s: 30, stride_length_s: 5 });
       if (result && result.text && result.text.trim()) {
         transcript = result.text.trim();
       }

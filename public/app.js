@@ -29,34 +29,66 @@ document.addEventListener('DOMContentLoaded', () => {
   let serverUrl = getStoredServerUrl();
   let socket = null;
 
-  // User Authentication State
-  let currentUser = null;
-  let pendingAuthPhone = '';
-
+  // User Authentication State - Persistent Storage (localStorage + Cookies)
   function getStoredUser() {
     try {
       const stored = localStorage.getItem('auth_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch (e) {
-      return null;
-    }
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.phone) return parsed;
+      }
+    } catch (e) {}
+
+    // Cookie fallback
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)auth_user=([^;]+)/);
+      if (match && match[1]) {
+        const parsed = JSON.parse(decodeURIComponent(match[1]));
+        if (parsed && parsed.phone) return parsed;
+      }
+    } catch (e) {}
+
+    return null;
   }
 
   function setStoredUser(user, token) {
     if (!user) return;
-    localStorage.setItem('auth_user', JSON.stringify(user));
-    if (token) localStorage.setItem('auth_token', token);
     currentUser = user;
+    try {
+      localStorage.removeItem('user_logged_out');
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      if (token) localStorage.setItem('auth_token', token);
+      if (user.phone) localStorage.setItem('auth_phone', user.phone);
+
+      const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(user))}; expires=${exp}; path=/; SameSite=Lax`;
+      if (token) document.cookie = `auth_token=${encodeURIComponent(token)}; expires=${exp}; path=/; SameSite=Lax`;
+      if (user.phone) document.cookie = `auth_phone=${encodeURIComponent(user.phone)}; expires=${exp}; path=/; SameSite=Lax`;
+    } catch (e) {}
+
     if (logoutBtn) logoutBtn.classList.remove('hidden');
     renderUserProfile(user);
   }
 
   function clearStoredUser() {
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_token');
     currentUser = null;
+    try {
+      localStorage.setItem('user_logged_out', 'true');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_phone');
+
+      document.cookie = 'auth_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+      document.cookie = 'auth_phone=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+    } catch (e) {}
+
+    apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     if (logoutBtn) logoutBtn.classList.add('hidden');
   }
+
+  let currentUser = getStoredUser();
+  let pendingAuthPhone = '';
 
   function apiFetch(urlPath, options = {}) {
     let targetUrl = urlPath;
@@ -73,14 +105,35 @@ document.addEventListener('DOMContentLoaded', () => {
     return fetch(targetUrl, { ...options, headers });
   }
 
-  // State
+  // WhatsApp Connection Persistent Cache
+  function getStoredWA() {
+    try {
+      const raw = localStorage.getItem('wa_status');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setStoredWA(statusData) {
+    try {
+      if (statusData && (statusData.status === 'connected' || statusData.user)) {
+        localStorage.setItem('wa_status', JSON.stringify(statusData));
+      } else if (statusData && statusData.status === 'disconnected' && !statusData.user) {
+        localStorage.removeItem('wa_status');
+      }
+    } catch (e) {}
+  }
+
+  // Pre-load WhatsApp status from persistent cache
+  const cachedWA = getStoredWA();
   let activeChatJid = null;
   let activeChatName = '';
   let threadsData = [];
   let currentFilter = 'all';
-  let isConnected = false;
-  let waAccountName = '';
-  let waAccountPhone = '';
+  let isConnected = Boolean(cachedWA && (cachedWA.status === 'connected' || cachedWA.user));
+  let waAccountName = (cachedWA && cachedWA.user && cachedWA.user.name) ? cachedWA.user.name : '';
+  let waAccountPhone = (cachedWA && cachedWA.user && cachedWA.user.phone) ? cachedWA.user.phone : '';
 
   let searchTimeout = null;
 
@@ -159,18 +212,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentQrData = null;
 
-  function showQrModal() {
+  function showQrModal(force = false) {
     if (!currentUser) {
       showAuthStep('phone');
       return;
     }
     if (!userSubscription || !userSubscription.is_subscribed) {
-      if (paywallModal) paywallModal.classList.remove('hidden');
+      if (paywallModal) {
+        paywallModal.classList.remove('hidden');
+        paywallModal.style.display = 'flex';
+      }
       safeCreateIcons();
+      return;
+    }
+    // If already connected and user did not explicitly request scanning a new QR, do not open
+    if (isConnected && !force) {
       return;
     }
     if (qrModal) {
       qrModal.classList.remove('hidden');
+      qrModal.style.display = 'flex';
       if (isConnected) {
         if (alreadyConnectedBanner) alreadyConnectedBanner.classList.remove('hidden');
         if (qrContainer) qrContainer.classList.add('hidden');
@@ -467,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalActiveExcludeKeywordTags = document.getElementById('modalActiveExcludeKeywordTags');
 
 
-  // DOM Elements - User Authentication & 4-Digit Passcode Setup
+  // DOM Elements - User Authentication & Fast2SMS OTP Verification
   const authModal = document.getElementById('authModal');
   const authModalTitle = document.getElementById('authModalTitle');
   const authModalSubtitle = document.getElementById('authModalSubtitle');
@@ -476,30 +537,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const authPhoneInput = document.getElementById('authPhoneInput');
   const authPhoneSubmitBtn = document.getElementById('authPhoneSubmitBtn');
 
-  const authPasscodeLoginForm = document.getElementById('authPasscodeLoginForm');
-  const authLoginDisplayPhone = document.getElementById('authLoginDisplayPhone');
-  const authLoginChangePhoneBtn = document.getElementById('authLoginChangePhoneBtn');
-  const authLoginUserName = document.getElementById('authLoginUserName');
-  const authLoginPasscodeInput = document.getElementById('authLoginPasscodeInput');
-  const toggleLoginPasscodeBtn = document.getElementById('toggleLoginPasscodeBtn');
-  const authPasscodeLoginBtn = document.getElementById('authPasscodeLoginBtn');
-  const authForgotPasscodeBtn = document.getElementById('authForgotPasscodeBtn');
+  const authOtpVerifyForm = document.getElementById('authOtpVerifyForm');
+  const authOtpDisplayPhone = document.getElementById('authOtpDisplayPhone');
+  const authOtpChangePhoneBtn = document.getElementById('authOtpChangePhoneBtn');
+  const authOtpInput = document.getElementById('authOtpInput');
+  const authNewUserFields = document.getElementById('authNewUserFields');
+  const authNewUserNameInput = document.getElementById('authNewUserNameInput');
+  const authOtpSubmitBtn = document.getElementById('authOtpSubmitBtn');
+  const authResendOtpBtn = document.getElementById('authResendOtpBtn');
+  const authResendCountdown = document.getElementById('authResendCountdown');
 
-  const authPasscodeRegisterForm = document.getElementById('authPasscodeRegisterForm');
-  const authRegisterDisplayPhone = document.getElementById('authRegisterDisplayPhone');
-  const authRegisterChangePhoneBtn = document.getElementById('authRegisterChangePhoneBtn');
-  const authRegisterNameInput = document.getElementById('authRegisterNameInput');
-  const authRegisterPasscodeInput = document.getElementById('authRegisterPasscodeInput');
-  const authRegisterConfirmPasscodeInput = document.getElementById('authRegisterConfirmPasscodeInput');
-  const authRegisterSubmitBtn = document.getElementById('authRegisterSubmitBtn');
+  let resendTimerInterval = null;
 
-  const authPasscodeResetForm = document.getElementById('authPasscodeResetForm');
-  const authResetDisplayPhone = document.getElementById('authResetDisplayPhone');
-  const authResetChangePhoneBtn = document.getElementById('authResetChangePhoneBtn');
-  const authResetPasscodeInput = document.getElementById('authResetPasscodeInput');
-  const authResetConfirmPasscodeInput = document.getElementById('authResetConfirmPasscodeInput');
-  const authResetSubmitBtn = document.getElementById('authResetSubmitBtn');
-  const authResetBackToLoginBtn = document.getElementById('authResetBackToLoginBtn');
+  function startResendCountdown(seconds = 30) {
+    if (resendTimerInterval) clearInterval(resendTimerInterval);
+    if (!authResendOtpBtn || !authResendCountdown) return;
+
+    let remaining = seconds;
+    authResendOtpBtn.disabled = true;
+    authResendOtpBtn.innerHTML = `Resend OTP in <span id="authResendCountdown">${remaining}</span>s`;
+
+    resendTimerInterval = setInterval(() => {
+      remaining--;
+      const span = document.getElementById('authResendCountdown');
+      if (remaining <= 0) {
+        clearInterval(resendTimerInterval);
+        authResendOtpBtn.disabled = false;
+        authResendOtpBtn.innerHTML = 'Resend OTP';
+      } else if (span) {
+        span.textContent = remaining;
+      }
+    }, 1000);
+  }
 
   // Edit Profile Modal Elements
   const editProfileModal = document.getElementById('editProfileModal');
@@ -524,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const profileManageKeywordsBtn = document.getElementById('profileManageKeywordsBtn');
   const pageProfileLogoutBtn = document.getElementById('pageProfileLogoutBtn');
 
-  // Auth Modal Flow Controller
+  // Auth Modal Flow Controller (Fast2SMS OTP)
   function showAuthStep(step) {
     if (authModal) {
       authModal.classList.remove('hidden');
@@ -543,9 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bottomNav) bottomNav.classList.add('hidden');
 
     if (authPhoneForm) { authPhoneForm.classList.add('hidden'); authPhoneForm.style.display = 'none'; }
-    if (authPasscodeLoginForm) { authPasscodeLoginForm.classList.add('hidden'); authPasscodeLoginForm.style.display = 'none'; }
-    if (authPasscodeRegisterForm) { authPasscodeRegisterForm.classList.add('hidden'); authPasscodeRegisterForm.style.display = 'none'; }
-    if (authPasscodeResetForm) { authPasscodeResetForm.classList.add('hidden'); authPasscodeResetForm.style.display = 'none'; }
+    if (authOtpVerifyForm) { authOtpVerifyForm.classList.add('hidden'); authOtpVerifyForm.style.display = 'none'; }
 
     if (step === 'phone') {
       if (authPhoneForm) {
@@ -553,47 +620,23 @@ document.addEventListener('DOMContentLoaded', () => {
         authPhoneForm.style.display = 'block';
       }
       if (authModalTitle) authModalTitle.textContent = 'Go-Notch Trip Monitor';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Login with your mobile number and 4-digit passcode';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your mobile number to receive SMS OTP';
       if (authPhoneInput) {
-        authPhoneInput.value = '';
+        if (pendingAuthPhone) authPhoneInput.value = pendingAuthPhone;
         setTimeout(() => authPhoneInput.focus(), 100);
       }
-    } else if (step === 'login') {
-      if (authPasscodeLoginForm) {
-        authPasscodeLoginForm.classList.remove('hidden');
-        authPasscodeLoginForm.style.display = 'block';
+    } else if (step === 'otp') {
+      if (authOtpVerifyForm) {
+        authOtpVerifyForm.classList.remove('hidden');
+        authOtpVerifyForm.style.display = 'block';
       }
-      if (authModalTitle) authModalTitle.textContent = 'Passcode Login';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your 4-digit passcode to enter';
-      if (authLoginPasscodeInput) {
-        authLoginPasscodeInput.value = '';
-        setTimeout(() => authLoginPasscodeInput.focus(), 100);
+      if (authModalTitle) authModalTitle.textContent = 'Verify Phone Number';
+      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter the 6-digit SMS OTP code sent to your mobile';
+      if (authOtpInput) {
+        authOtpInput.value = '';
+        setTimeout(() => authOtpInput.focus(), 100);
       }
-    } else if (step === 'register') {
-      if (authPasscodeRegisterForm) {
-        authPasscodeRegisterForm.classList.remove('hidden');
-        authPasscodeRegisterForm.style.display = 'block';
-      }
-      if (authModalTitle) authModalTitle.textContent = 'Create Account';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Set your username and 4-digit passcode';
-      if (authRegisterNameInput) {
-        authRegisterNameInput.value = '';
-        setTimeout(() => authRegisterNameInput.focus(), 100);
-      }
-      if (authRegisterPasscodeInput) authRegisterPasscodeInput.value = '';
-      if (authRegisterConfirmPasscodeInput) authRegisterConfirmPasscodeInput.value = '';
-    } else if (step === 'reset') {
-      if (authPasscodeResetForm) {
-        authPasscodeResetForm.classList.remove('hidden');
-        authPasscodeResetForm.style.display = 'block';
-      }
-      if (authModalTitle) authModalTitle.textContent = 'Reset Passcode';
-      if (authModalSubtitle) authModalSubtitle.textContent = 'Enter and confirm a new 4-digit passcode';
-      if (authResetPasscodeInput) {
-        authResetPasscodeInput.value = '';
-        setTimeout(() => authResetPasscodeInput.focus(), 100);
-      }
-      if (authResetConfirmPasscodeInput) authResetConfirmPasscodeInput.value = '';
+      startResendCountdown(30);
     }
     safeCreateIcons();
   }
@@ -676,12 +719,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDesktopNotifUI();
   }
 
-  // 1. Phone Form Submit Handler
+  // 1. Phone Form Submit Handler (Sends Fast2SMS OTP)
   if (authPhoneForm) {
     authPhoneForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const rawPhone = authPhoneInput ? authPhoneInput.value.trim() : '';
-      const cleanPhone = rawPhone.replace(/\D/g, '');
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
 
       if (cleanPhone.length < 10) {
         alert('Please enter a valid 10-digit mobile number.');
@@ -689,47 +732,47 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       pendingAuthPhone = cleanPhone;
-      const formattedDisplay = `+91 ${cleanPhone.slice(-10)}`;
-      if (authLoginDisplayPhone) authLoginDisplayPhone.textContent = formattedDisplay;
-      if (authRegisterDisplayPhone) authRegisterDisplayPhone.textContent = formattedDisplay;
-      if (authResetDisplayPhone) authResetDisplayPhone.textContent = formattedDisplay;
+      const formattedDisplay = `+91 ${cleanPhone}`;
+      if (authOtpDisplayPhone) authOtpDisplayPhone.textContent = formattedDisplay;
 
       const submitBtn = authPhoneSubmitBtn || authPhoneForm.querySelector('button[type="submit"]');
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Checking...</span>`;
+        submitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Sending SMS OTP...</span>`;
       }
 
       try {
-        const res = await apiFetch('/api/auth/check-phone', {
+        const res = await apiFetch('/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: cleanPhone })
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to verify phone number');
+          if (data.isDeactivated) {
+            alert('⚠️ Account Deactivated\n\n' + (data.error || 'Your account has been deactivated by the administrator. Please contact admin.'));
+            return;
+          }
+          throw new Error(data.error || 'Failed to send OTP via SMS');
         }
 
-        if (data.isDeactivated) {
-          alert('⚠️ Account Deactivated\n\nYour account has been deactivated by the administrator.\nPlease contact admin at support@pickmicabs.com to reactivate your access.');
-          showAuthStep('phone');
-          return;
+        // Show Name input if new user
+        if (authNewUserFields) {
+          if (!data.exists) {
+            authNewUserFields.classList.remove('hidden');
+          } else {
+            authNewUserFields.classList.add('hidden');
+          }
         }
 
-        if (data.exists && data.hasPasscode) {
-          if (authLoginUserName) authLoginUserName.textContent = data.name || 'User';
-          showAuthStep('login');
-        } else if (data.exists && !data.hasPasscode) {
-          // User already exists in database, just prompt them to set their 4-digit passcode directly
-          if (authResetDisplayPhone) authResetDisplayPhone.textContent = formattedDisplay;
-          showAuthStep('reset');
-        } else {
-          showAuthStep('register');
+        if (authOtpInput) {
+          authOtpInput.value = '';
         }
+
+        showAuthStep('otp');
       } catch (err) {
-        alert(err.message || 'Error checking phone number. Please try again.');
+        alert(err.message || 'Error sending SMS OTP. Please try again.');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -740,44 +783,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Change phone buttons on all steps
-  if (authLoginChangePhoneBtn) authLoginChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
-  if (authRegisterChangePhoneBtn) authRegisterChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
-  if (authResetChangePhoneBtn) authResetChangePhoneBtn.addEventListener('click', () => showAuthStep('phone'));
-  if (authResetBackToLoginBtn) authResetBackToLoginBtn.addEventListener('click', () => showAuthStep('login'));
-  if (authForgotPasscodeBtn) authForgotPasscodeBtn.addEventListener('click', () => showAuthStep('reset'));
-
-  // Toggle Passcode Visibility in Login
-  if (toggleLoginPasscodeBtn && authLoginPasscodeInput) {
-    toggleLoginPasscodeBtn.addEventListener('click', () => {
-      const isPassword = authLoginPasscodeInput.type === 'password';
-      authLoginPasscodeInput.type = isPassword ? 'text' : 'password';
-      toggleLoginPasscodeBtn.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
-      safeCreateIcons();
+  // Change phone button on OTP verification step
+  if (authOtpChangePhoneBtn) {
+    authOtpChangePhoneBtn.addEventListener('click', () => {
+      showAuthStep('phone');
     });
   }
 
-  // 2. Existing User Passcode Login Form Submit Handler
-  if (authPasscodeLoginForm) {
-    authPasscodeLoginForm.addEventListener('submit', async (e) => {
+  // 2. OTP Verification Form Submit Handler
+  if (authOtpVerifyForm) {
+    authOtpVerifyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const passcode = authLoginPasscodeInput ? authLoginPasscodeInput.value.trim() : '';
+      const otp = authOtpInput ? authOtpInput.value.trim() : '';
+      const name = authNewUserNameInput ? authNewUserNameInput.value.trim() : '';
 
-      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
-        alert('Please enter your 4-digit numeric passcode.');
-        if (authLoginPasscodeInput) authLoginPasscodeInput.focus();
+      if (!otp || otp.length < 4) {
+        alert('Please enter the 6-digit verification code received via SMS.');
+        if (authOtpInput) authOtpInput.focus();
         return;
       }
 
-      const origBtnHtml = authPasscodeLoginBtn.innerHTML;
-      authPasscodeLoginBtn.disabled = true;
-      authPasscodeLoginBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Logging in...</span>`;
+      const origBtnHtml = authOtpSubmitBtn.innerHTML;
+      authOtpSubmitBtn.disabled = true;
+      authOtpSubmitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Verifying Code...</span>`;
 
       try {
-        const res = await apiFetch('/api/auth/login-passcode', {
+        const res = await apiFetch('/api/auth/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone, passcode })
+          body: JSON.stringify({
+            phone: pendingAuthPhone,
+            otp,
+            name
+          })
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
@@ -786,116 +824,57 @@ document.addEventListener('DOMContentLoaded', () => {
             showAuthStep('phone');
             return;
           }
-          if (data.needsPasscodeSetup) {
-            alert('No passcode was set for this account yet. Please set one now.');
-            showAuthStep('reset');
-            return;
+          throw new Error(data.error || 'Invalid or expired OTP code');
+        }
+
+        await handleSuccessfulLogin(data.user, data.token);
+      } catch (err) {
+        alert(err.message || 'OTP verification failed. Please check the code and try again.');
+        if (authOtpInput) authOtpInput.focus();
+      } finally {
+        authOtpSubmitBtn.disabled = false;
+        authOtpSubmitBtn.innerHTML = origBtnHtml;
+        safeCreateIcons();
+      }
+    });
+  }
+
+  // 3. Resend OTP Button Handler
+  if (authResendOtpBtn) {
+    authResendOtpBtn.addEventListener('click', async () => {
+      if (!pendingAuthPhone) {
+        showAuthStep('phone');
+        return;
+      }
+
+      authResendOtpBtn.disabled = true;
+      authResendOtpBtn.innerHTML = `<div class="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block"></div> Resending...`;
+
+      try {
+        const res = await apiFetch('/api/auth/resend-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pendingAuthPhone })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to resend SMS OTP');
+        }
+
+        if (data.devMode && data.otp) {
+          if (authDevModeAlert && authDevOtpCode) {
+            authDevOtpCode.textContent = data.otp;
+            authDevModeAlert.classList.remove('hidden');
           }
-          throw new Error(data.error || 'Incorrect passcode. Please try again.');
+          if (authOtpInput) authOtpInput.value = data.otp;
         }
 
-        await handleSuccessfulLogin(data.user, data.token);
+        alert('✅ New OTP sent successfully to +91 ' + pendingAuthPhone);
+        startResendCountdown(30);
       } catch (err) {
-        alert(err.message || 'Login failed. Please check your passcode and try again.');
-      } finally {
-        authPasscodeLoginBtn.disabled = false;
-        authPasscodeLoginBtn.innerHTML = origBtnHtml;
-        safeCreateIcons();
-      }
-    });
-  }
-
-  // 3. New User Registration Form Submit Handler
-  if (authPasscodeRegisterForm) {
-    authPasscodeRegisterForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = authRegisterNameInput ? authRegisterNameInput.value.trim() : '';
-      const passcode = authRegisterPasscodeInput ? authRegisterPasscodeInput.value.trim() : '';
-      const confirmPasscode = authRegisterConfirmPasscodeInput ? authRegisterConfirmPasscodeInput.value.trim() : '';
-      const selectedGenderRadio = document.querySelector('input[name="authRegisterGender"]:checked');
-      const gender = selectedGenderRadio ? selectedGenderRadio.value : 'Male';
-
-      if (!name) {
-        alert('Please enter your full name or username.');
-        return;
-      }
-
-      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
-        alert('Please enter a 4-digit numeric passcode.');
-        return;
-      }
-
-      if (passcode !== confirmPasscode) {
-        alert('Passcode and Confirm Passcode do not match. Please re-enter.');
-        return;
-      }
-
-      const origBtnHtml = authRegisterSubmitBtn.innerHTML;
-      authRegisterSubmitBtn.disabled = true;
-      authRegisterSubmitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Creating Account...</span>`;
-
-      try {
-        const res = await apiFetch('/api/auth/register-passcode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone, name, gender, passcode })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to create account');
-        }
-
-        await handleSuccessfulLogin(data.user, data.token);
-      } catch (err) {
-        alert(err.message || 'Error creating account. Please try again.');
-      } finally {
-        authRegisterSubmitBtn.disabled = false;
-        authRegisterSubmitBtn.innerHTML = origBtnHtml;
-        safeCreateIcons();
-      }
-    });
-  }
-
-  // 4. Passcode Reset Form Submit Handler
-  if (authPasscodeResetForm) {
-    authPasscodeResetForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const passcode = authResetPasscodeInput ? authResetPasscodeInput.value.trim() : '';
-      const confirmPasscode = authResetConfirmPasscodeInput ? authResetConfirmPasscodeInput.value.trim() : '';
-
-      if (!passcode || passcode.length !== 4 || !/^\d{4}$/.test(passcode)) {
-        alert('Please enter a 4-digit numeric passcode.');
-        return;
-      }
-
-      if (passcode !== confirmPasscode) {
-        alert('Passcode and Confirm Passcode do not match.');
-        return;
-      }
-
-      const origBtnHtml = authResetSubmitBtn.innerHTML;
-      authResetSubmitBtn.disabled = true;
-      authResetSubmitBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Updating Passcode...</span>`;
-
-      try {
-        const res = await apiFetch('/api/auth/reset-passcode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pendingAuthPhone, passcode })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to reset passcode');
-        }
-
-        alert('✅ Passcode updated successfully!');
-        await handleSuccessfulLogin(data.user, data.token);
-      } catch (err) {
-        alert(err.message || 'Error resetting passcode. Please try again.');
-      } finally {
-        authResetSubmitBtn.disabled = false;
-        authResetSubmitBtn.innerHTML = origBtnHtml;
-        safeCreateIcons();
+        alert(err.message || 'Could not resend OTP. Please try again.');
+        authResendOtpBtn.disabled = false;
+        authResendOtpBtn.innerHTML = 'Resend OTP';
       }
     });
   }
@@ -1043,6 +1022,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let cachedAlertsData = [];
 
   function switchTab(tabName) {
+    try {
+      localStorage.setItem('active_tab', tabName);
+    } catch (e) {}
 
     bottomNavBtns.forEach(btn => {
       const tab = btn.getAttribute('data-tab');
@@ -1074,9 +1056,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDashboardPayments();
     } else if (tabName === 'whatsapp') {
       if (pageViewWhatsApp) pageViewWhatsApp.classList.remove('hidden');
-      if (!isConnected) {
-        showQrModal();
-      }
       const chatSidebar = document.getElementById('chatSidebar');
       const chatMainArea = document.getElementById('chatMainArea');
       if (!activeChatJid && chatSidebar && chatMainArea) {
@@ -1942,26 +1921,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (closeQrModalBtn) {
     closeQrModalBtn.addEventListener('click', () => {
-      if (qrModal) qrModal.classList.add('hidden');
+      if (qrModal) {
+        qrModal.classList.add('hidden');
+        qrModal.style.display = 'none';
+      }
     });
   }
 
   // Only show QR modal if user explicitly triggers it or when a real QR is ready
   if (qrModal) {
     qrModal.classList.add('hidden');
+    qrModal.style.display = 'none';
   }
 
   // "Open App" button on connected banner — only works when connected
   if (qrContinueBtn) {
     qrContinueBtn.addEventListener('click', () => {
-      if (qrModal) qrModal.classList.add('hidden');
+      if (qrModal) {
+        qrModal.classList.add('hidden');
+        qrModal.style.display = 'none';
+      }
     });
   }
 
   async function triggerLogoutAndReset() {
     try {
+      setStoredWA({ status: 'disconnected' });
+      isConnected = false;
       // Open QR modal immediately so user sees the reconnect flow
-      if (qrModal) qrModal.classList.remove('hidden');
+      if (qrModal) {
+        qrModal.classList.remove('hidden');
+        qrModal.style.display = 'flex';
+      }
       if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
       if (qrContainer) qrContainer.classList.remove('hidden');
       if (qrLoading) qrLoading.classList.remove('hidden');
@@ -2022,6 +2013,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (status === 'connected' || user) {
       isConnected = true;
       currentQrData = null;
+      setStoredWA({ status: 'connected', user: user || { name: waAccountName, phone: waAccountPhone } });
       if (statusText) statusText.textContent = 'Connected';
       if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
 
@@ -2036,7 +2028,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Connected → close QR modal
-      if (qrModal) qrModal.classList.add('hidden');
+      if (qrModal) {
+        qrModal.classList.add('hidden');
+        qrModal.style.display = 'none';
+      }
       if (alreadyConnectedBanner) alreadyConnectedBanner.classList.add('hidden');
       if (qrContainer) qrContainer.classList.add('hidden');
 
@@ -3920,13 +3915,49 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial Auth & Data Load
   async function initAppSession() {
     currentUser = getStoredUser();
+
+    // If not in local storage/cookie, check server for active session (unless user explicitly logged out)
+    const explicitlyLoggedOut = localStorage.getItem('user_logged_out') === 'true';
+    if (!currentUser && !explicitlyLoggedOut) {
+      try {
+        const sessRes = await apiFetch('/api/auth/active-session');
+        if (sessRes.ok) {
+          const sessData = await sessRes.json();
+          if (sessData && sessData.user && sessData.user.phone) {
+            currentUser = sessData.user;
+            setStoredUser(currentUser, sessData.token);
+          }
+        }
+      } catch (e) {
+        console.warn('Session auto-restore error:', e.message);
+      }
+    }
+
     if (!currentUser || !currentUser.phone) {
       showAuthStep('phone');
       return;
     }
 
+    // Instantly hide auth modal and show dashboard with cached user state
+    hideAuthModal();
+    renderUserProfile(currentUser);
+    if (socket && currentUser && currentUser.phone) {
+      socket.emit('register_user', currentUser.phone);
+    }
+    fetchSubscriptionStatus().catch(() => {});
+
+    // Restore last active tab so user doesn't lose their place when closing/reopening window
+    const savedTab = localStorage.getItem('active_tab') || 'dashboard';
+    switchTab(savedTab);
+
+    loadStats();
+    loadThreads();
+    loadKeywords();
+    loadKeywordAlerts();
+    updateDesktopNotifUI();
+
+    // Background validation & profile sync with server
     try {
-      // Validate and sync with server database
       const res = await apiFetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
@@ -3934,32 +3965,18 @@ document.addEventListener('DOMContentLoaded', () => {
           currentUser = data.user;
           setStoredUser(currentUser);
         }
-      } else if (res.status === 403 || res.status === 404) {
-        // User deactivated or not in DB
+      } else if (res.status === 403) {
+        // User explicitly deactivated by admin
         const data = await res.json().catch(() => ({}));
-        clearStoredUser();
-        showAuthStep('phone');
         if (data.isDeactivated) {
+          clearStoredUser();
+          showAuthStep('phone');
           alert('⚠️ Account Deactivated\n\n' + (data.error || 'Your account has been deactivated by administrator. Please contact admin.'));
         }
-        return;
       }
     } catch (e) {
       console.warn('Profile sync warning (offline/cached):', e.message);
     }
-
-    hideAuthModal();
-    renderUserProfile(currentUser);
-    if (socket && currentUser && currentUser.phone) {
-      socket.emit('register_user', currentUser.phone);
-    }
-    await fetchSubscriptionStatus();
-    switchTab('dashboard');
-    loadStats();
-    loadThreads();
-    loadKeywords();
-    loadKeywordAlerts();
-    updateDesktopNotifUI();
   }
 
   initAppSession();

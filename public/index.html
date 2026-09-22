@@ -80,6 +80,94 @@
     </div>
   </div>
 
+  <!-- Mandatory Notification Permission Modal Gate -->
+  <div id="mandatoryNotifModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[9990] flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative text-center">
+      
+      <!-- Brand Logo Header -->
+      <div class="flex items-center justify-center">
+        <img src="/icons/gonotch-logo.png?v=2" alt="GoNotch" class="h-8 sm:h-9 w-auto object-contain dark:hidden">
+        <img src="/icons/gonotch-logo-white.png?v=2" alt="GoNotch" class="h-8 sm:h-9 w-auto object-contain hidden dark:block">
+      </div>
+
+      <!-- Pulsing Notification Bell Icon -->
+      <div class="relative inline-flex items-center justify-center mx-auto mt-1">
+        <div class="w-20 h-20 rounded-3xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 shadow-lg shadow-blue-500/10">
+          <i data-lucide="bell-ring" class="w-10 h-10 animate-bounce-subtle"></i>
+        </div>
+        <span class="absolute -top-1 -right-1 flex h-4 w-4">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-600"></span>
+        </span>
+      </div>
+
+      <!-- Title & Explanation -->
+      <div class="space-y-2">
+        <h2 id="mandatoryNotifTitle" class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Notifications Required
+        </h2>
+        <p id="mandatoryNotifSubtitle" class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+          Go-Notch requires push notifications to alert you instantly about new trip leads, bookings, and matched routes.
+        </p>
+      </div>
+
+      <!-- Features Pill List -->
+      <div class="space-y-2.5 text-left bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+        <div class="flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+          </div>
+          <span>Instant sound chimes on trip matches</span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="zap" class="w-3.5 h-3.5 stroke-[3]"></i>
+          </div>
+          <span>Real-time popup cards for high-priority leads</span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 stroke-[3]"></i>
+          </div>
+          <span>Continuous background monitoring alerts</span>
+        </div>
+      </div>
+
+      <!-- State 1: Default State (Allow Button) -->
+      <div id="mandatoryNotifDefaultBox" class="space-y-2">
+        <button type="button" id="mandatoryNotifAllowBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span>Allow Notifications to Continue</span>
+        </button>
+        <p class="text-[11px] text-slate-400">You must tap 'Allow' on the browser prompt to enter the app.</p>
+      </div>
+
+      <!-- State 2: Denied / Blocked State (Instructions + Re-check Button) -->
+      <div id="mandatoryNotifBlockedBox" class="hidden space-y-3">
+        <div class="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-500/30 rounded-2xl text-left space-y-1.5 text-xs">
+          <div class="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+            <span>Notifications Blocked in Browser</span>
+          </div>
+          <p class="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+            Please unblock notifications to continue:
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400 text-[11px]">
+            <li>Click the <strong>Padlock / Site Settings (🔒)</strong> icon in your browser address bar.</li>
+            <li>Set <strong>Notifications</strong> to <strong>Allow</strong>.</li>
+            <li>Tap the button below to continue.</li>
+          </ol>
+        </div>
+
+        <button type="button" id="mandatoryNotifRecheckBtn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>Check Permission & Enter App</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Fullscreen User Login / 4-Digit Passcode / Profile Setup Screen (Default entry point) -->
   <div id="authModal" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[100] items-center justify-center p-4 overflow-y-auto" style="display: none;">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative transition-all">
@@ -1600,7 +1688,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 
 </body>
 </html>

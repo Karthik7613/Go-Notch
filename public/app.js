@@ -3552,6 +3552,157 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDesktopNotifUI();
 
   // =========================================================================
+  // 🔔 MANDATORY NOTIFICATION PERMISSION GATE
+  // =========================================================================
+  const mandatoryNotifModal = document.getElementById('mandatoryNotifModal');
+  const mandatoryNotifDefaultBox = document.getElementById('mandatoryNotifDefaultBox');
+  const mandatoryNotifBlockedBox = document.getElementById('mandatoryNotifBlockedBox');
+  const mandatoryNotifTitle = document.getElementById('mandatoryNotifTitle');
+  const mandatoryNotifSubtitle = document.getElementById('mandatoryNotifSubtitle');
+  const mandatoryNotifAllowBtn = document.getElementById('mandatoryNotifAllowBtn');
+  const mandatoryNotifRecheckBtn = document.getElementById('mandatoryNotifRecheckBtn');
+
+  function showMandatoryNotifModal(state = 'default') {
+    if (!mandatoryNotifModal) return;
+    mandatoryNotifModal.classList.remove('hidden');
+    mandatoryNotifModal.style.display = 'flex';
+
+    if (state === 'denied') {
+      if (mandatoryNotifDefaultBox) mandatoryNotifDefaultBox.classList.add('hidden');
+      if (mandatoryNotifBlockedBox) mandatoryNotifBlockedBox.classList.remove('hidden');
+      if (mandatoryNotifTitle) mandatoryNotifTitle.textContent = 'Notifications Are Blocked';
+      if (mandatoryNotifSubtitle) mandatoryNotifSubtitle.textContent = 'To continue using Go-Notch, please allow notifications in your browser settings.';
+    } else {
+      if (mandatoryNotifDefaultBox) mandatoryNotifDefaultBox.classList.remove('hidden');
+      if (mandatoryNotifBlockedBox) mandatoryNotifBlockedBox.classList.add('hidden');
+      if (mandatoryNotifTitle) mandatoryNotifTitle.textContent = 'Notifications Required';
+      if (mandatoryNotifSubtitle) mandatoryNotifSubtitle.textContent = 'Go-Notch requires push notifications to alert you instantly about new trip leads, bookings, and matched routes.';
+    }
+    safeCreateIcons();
+  }
+
+  function hideMandatoryNotifModal() {
+    if (!mandatoryNotifModal) return;
+    mandatoryNotifModal.classList.add('hidden');
+    mandatoryNotifModal.style.display = 'none';
+  }
+
+  function checkMandatoryNotificationGate() {
+    if (typeof Notification === 'undefined') {
+      // Browser or webview does not support Notification API
+      hideMandatoryNotifModal();
+      return true;
+    }
+
+    if (Notification.permission === 'granted') {
+      desktopNotifEnabled = true;
+      localStorage.setItem('desktop_notif_enabled', 'true');
+      hideMandatoryNotifModal();
+      updateDesktopNotifUI();
+      return true;
+    }
+
+    // Permission is either 'default' (not yet asked) or 'denied' (blocked)
+    showMandatoryNotifModal(Notification.permission);
+    updateDesktopNotifUI();
+    return false;
+  }
+
+  if (mandatoryNotifAllowBtn) {
+    mandatoryNotifAllowBtn.addEventListener('click', async () => {
+      unlockAudio();
+      if (typeof Notification === 'undefined') {
+        hideMandatoryNotifModal();
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          desktopNotifEnabled = true;
+          localStorage.setItem('desktop_notif_enabled', 'true');
+          hideMandatoryNotifModal();
+          updateDesktopNotifUI();
+          playAlertChime();
+          showDesktopNotification({
+            chat_name: 'Go-Notch Active',
+            sender_name: 'System',
+            matched_keywords: ['Connected'],
+            content: 'Notifications are enabled! You will now receive instant sound chimes and trip alerts.'
+          });
+        } else {
+          showMandatoryNotifModal('denied');
+        }
+      } catch (err) {
+        console.warn('Notification permission request error:', err);
+        checkMandatoryNotificationGate();
+      }
+    });
+  }
+
+  if (mandatoryNotifRecheckBtn) {
+    mandatoryNotifRecheckBtn.addEventListener('click', () => {
+      unlockAudio();
+      if (typeof Notification === 'undefined') {
+        hideMandatoryNotifModal();
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        desktopNotifEnabled = true;
+        localStorage.setItem('desktop_notif_enabled', 'true');
+        hideMandatoryNotifModal();
+        updateDesktopNotifUI();
+        playAlertChime();
+        showDesktopNotification({
+          chat_name: 'Go-Notch Active',
+          sender_name: 'System',
+          matched_keywords: ['Allowed'],
+          content: 'Notifications are unblocked and active! Welcome back.'
+        });
+      } else if (Notification.permission === 'default') {
+        showMandatoryNotifModal('default');
+      } else {
+        alert('⚠️ Notifications are still blocked in your browser.\n\nTo allow:\n1. Click the Padlock / Site Settings icon (🔒) in your browser address bar.\n2. Set "Notifications" to "Allow".\n3. Tap this button again or reload the page.');
+      }
+    });
+  }
+
+  // Prevent closing modal via escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mandatoryNotifModal && !mandatoryNotifModal.classList.contains('hidden')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  // Real-time synchronization if user changes permission via browser URL padlock icon
+  if (navigator.permissions && navigator.permissions.query) {
+    try {
+      navigator.permissions.query({ name: 'notifications' }).then(status => {
+        status.onchange = () => {
+          checkMandatoryNotificationGate();
+        };
+      }).catch(() => {});
+    } catch (e) {}
+  }
+
+  window.addEventListener('focus', () => {
+    if (typeof Notification !== 'undefined') {
+      checkMandatoryNotificationGate();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && typeof Notification !== 'undefined') {
+      checkMandatoryNotificationGate();
+    }
+  });
+
+  // Initial gate check on load
+  checkMandatoryNotificationGate();
+
+  // =========================================================================
   // RAZORPAY SUBSCRIPTION & ACCESS PAYWALL ENGINE (₹49/month Plan)
   // =========================================================================
   let userSubscription = null;
@@ -4093,10 +4244,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
       }, 450);
     }
+    checkMandatoryNotificationGate();
   }
 
   // Initial Auth & Data Load
   async function initAppSession() {
+    // Enforce mandatory notification gate on open
+    checkMandatoryNotificationGate();
+
     // Safety fallback to guarantee splash screen is always dismissed
     setTimeout(dismissSplashScreen, 1800);
 

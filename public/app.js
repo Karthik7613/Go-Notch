@@ -2126,7 +2126,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const effectiveUser = user || (cachedWA && cachedWA.user ? cachedWA.user : null);
-    const isEffectiveConnected = (status === 'connected') || Boolean(user) || (Boolean(effectiveUser) && status !== 'disconnected' && !qr);
+    const hasCreds = Boolean(effectiveUser && (effectiveUser.phone || effectiveUser.name));
+    const isEffectiveConnected = (status === 'connected') || Boolean(user) || (hasCreds && status !== 'disconnected');
 
     if (isEffectiveConnected) {
       isConnected = true;
@@ -2147,6 +2148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const initial = (waAccountName || 'W').charAt(0).toUpperCase();
       if (userAvatar) userAvatar.textContent = initial;
       updateProfilePageData();
+      renderDashboardSubscription();
 
       // Connected → close QR modal
       if (qrModal) {
@@ -2160,7 +2162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadStats();
         loadThreads();
       }
-    } else if (qr) {
+    } else if (qr && !hasCreds) {
       currentQrData = qr;
       isConnected = false;
       if (statusText) statusText.textContent = 'Scan QR Code';
@@ -2172,15 +2174,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (qrImage) qrImage.src = qr;
       if (qrLoading) qrLoading.classList.add('hidden');
     } else if (status === 'connecting') {
-      if (statusText) statusText.textContent = 'Connecting...';
-      if (statusBadge) {
-        statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold rounded-lg"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...</button>`;
+      if (hasCreds) {
+        isConnected = true;
+        if (statusText) statusText.textContent = 'Connected';
+        if (statusBadge) {
+          statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
+        }
+      } else {
+        if (statusText) statusText.textContent = 'Connecting...';
+        if (statusBadge) {
+          statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold rounded-lg"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...</button>`;
+        }
       }
     } else {
-      isConnected = false;
-      if (statusText) statusText.textContent = 'Disconnected';
-      if (statusBadge) {
-        statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Reconnect WhatsApp</button>`;
+      if (!hasCreds) {
+        isConnected = false;
+        if (statusText) statusText.textContent = 'Disconnected';
+        if (statusBadge) {
+          statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Reconnect WhatsApp</button>`;
+        }
       }
     }
 

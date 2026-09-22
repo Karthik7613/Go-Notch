@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "WhatsApp Monitor",
-    "slug": "whatsapp-monitor",
+    "name": "Go-Notch Trip Monitor",
+    "slug": "go-notch-monitor",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "jsEngine": "hermes",
     "splash": {
+      "image": "./public/icons/gonotch-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0b141a"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true

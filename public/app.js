@@ -4069,8 +4069,25 @@ document.addEventListener('DOMContentLoaded', () => {
     paywallPayWithRazorpayBtn.addEventListener('click', () => launchRazorpayCheckout(2));
   }
 
+  function dismissSplashScreen() {
+    const splash = document.getElementById('appSplashScreen');
+    if (splash && !splash.dataset.dismissed) {
+      splash.dataset.dismissed = 'true';
+      splash.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        try {
+          splash.style.display = 'none';
+          splash.remove();
+        } catch (e) {}
+      }, 450);
+    }
+  }
+
   // Initial Auth & Data Load
   async function initAppSession() {
+    // Safety fallback to guarantee splash screen is always dismissed
+    setTimeout(dismissSplashScreen, 1800);
+
     currentUser = getStoredUser();
 
     // If not in local storage/cookie, check server for active session (unless user explicitly logged out)
@@ -4092,6 +4109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!currentUser || !currentUser.phone) {
       showAuthStep('phone');
+      setTimeout(dismissSplashScreen, 300);
       return;
     }
 
@@ -4133,6 +4151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore last active tab so user doesn't lose their place when closing/reopening window
     const savedTab = localStorage.getItem('active_tab') || 'dashboard';
     switchTab(savedTab);
+    setTimeout(dismissSplashScreen, 400);
 
     // Parallel Background Data Sync (Fast, Deduplicated & Non-blocking)
     Promise.all([

@@ -204,10 +204,15 @@ function initDb() {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_jid);
+    CREATE INDEX IF NOT EXISTS idx_messages_chat_ts ON messages(chat_jid, timestamp DESC, id DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_jid);
     CREATE INDEX IF NOT EXISTS idx_messages_type ON messages(message_type);
     CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(name);
+    CREATE INDEX IF NOT EXISTS idx_contacts_jid ON contacts(jid);
+    CREATE INDEX IF NOT EXISTS idx_chats_jid ON chats(jid);
     CREATE INDEX IF NOT EXISTS idx_chats_timestamp ON chats(conversation_timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_phone ON subscriptions(user_phone);
+    CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
   `);
 }
 
@@ -497,7 +502,7 @@ function enrichMessage(m) {
   };
 }
 
-function getChatThreads(query = '') {
+function getChatThreads(query = '', limit = 100) {
   let where = '';
   let params = [];
   if (query && query.trim()) {
@@ -505,6 +510,8 @@ function getChatThreads(query = '') {
     const q = `%${query.trim()}%`;
     params = [q, q, q, q, q];
   }
+
+  const numLimit = Math.min(Math.max(Number(limit) || 100, 10), 500);
 
   const sql = `
     SELECT 
@@ -516,13 +523,7 @@ function getChatThreads(query = '') {
       m.message_type as last_type,
       m.is_from_me as last_is_from_me,
       COALESCE(m.timestamp, c.conversation_timestamp, 0) as last_timestamp
-    FROM (
-      SELECT jid, name, unread_count, conversation_timestamp, updated_at FROM chats
-      UNION
-      SELECT jid, name, 0 as unread_count, 0 as conversation_timestamp, updated_at FROM contacts
-      UNION
-      SELECT DISTINCT chat_jid as jid, chat_name as name, 0 as unread_count, MAX(timestamp) as conversation_timestamp, MAX(timestamp) as updated_at FROM messages GROUP BY chat_jid
-    ) c
+    FROM chats c
     LEFT JOIN messages m ON m.id = (
       SELECT id FROM messages 
       WHERE chat_jid = c.jid 
@@ -530,9 +531,8 @@ function getChatThreads(query = '') {
       LIMIT 1
     )
     ${where}
-    GROUP BY c.jid
     ORDER BY (m.timestamp IS NOT NULL) DESC, last_timestamp DESC
-    LIMIT 500
+    LIMIT ${numLimit}
   `;
 
   const rows = db.prepare(sql).all(...params);
@@ -651,19 +651,28 @@ function getContacts(query = '') {
   return db.prepare('SELECT * FROM contacts ORDER BY name ASC LIMIT 500').all();
 }
 
+let cachedStats = null;
+let cachedStatsTime = 0;
+
 function getStats() {
+  const now = Date.now();
+  if (cachedStats && (now - cachedStatsTime < 2500)) {
+    return cachedStats;
+  }
   const totalMessages = db.prepare('SELECT COUNT(*) as count FROM messages').get().count;
   const startOfDay = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
   const todayMessages = db.prepare('SELECT COUNT(*) as count FROM messages WHERE timestamp >= ?').get(startOfDay).count;
-  const totalChats = db.prepare('SELECT COUNT(DISTINCT jid) as count FROM (SELECT jid FROM chats UNION SELECT jid FROM contacts UNION SELECT chat_jid as jid FROM messages)').get().count;
-  const totalContacts = db.prepare('SELECT COUNT(DISTINCT jid) as count FROM (SELECT jid FROM contacts UNION SELECT sender_jid as jid FROM messages WHERE is_from_me = 0)').get().count;
+  const totalChats = db.prepare('SELECT COUNT(*) as count FROM chats').get().count;
+  const totalContacts = db.prepare('SELECT COUNT(*) as count FROM contacts').get().count;
 
-  return {
+  cachedStats = {
     totalMessages,
     todayMessages,
     totalChats,
     totalSenders: totalContacts
   };
+  cachedStatsTime = now;
+  return cachedStats;
 }
 
 const DEFAULT_INCLUDE_KEYWORDS = ['chennai', 'airport', 'drop', 'pickup', 'trip', 'outstation', 'cab', 'urgent', 'bangalore', 'pondicherry'];
@@ -1195,8 +1204,37 @@ function getUserSubscription(phone) {
 
 async function getUserSubscriptionAsync(phone) {
   const sub = getUserSubscription(phone);
+  // If user already has an active local subscription, return immediately (<1ms)
   if (sub && sub.is_subscribed) return sub;
 
+  // If local subscription record exists (even if expired), return immediately and sync in background
+  if (sub && sub.id) {
+    fetchSubscriptionFromSupabase(phone).then(sbSub => {
+      if (sbSub) {
+        const cleanPhone = String(sbSub.user_phone || phone).replace(/\D/g, '');
+        const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+        const now = Math.floor(Date.now() / 1000);
+        db.prepare(`
+          INSERT OR REPLACE INTO subscriptions (user_phone, plan_name, plan_price, status, started_at, expires_at, payment_id, order_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          p10,
+          sbSub.plan_name || 'Monthly Pro',
+          sbSub.plan_price || 2,
+          sbSub.status || 'active',
+          sbSub.started_at || now,
+          sbSub.expires_at || (now + 30 * 86400),
+          sbSub.payment_id || '',
+          sbSub.order_id || '',
+          sbSub.created_at || now,
+          sbSub.updated_at || now
+        );
+      }
+    }).catch(() => {});
+    return sub;
+  }
+
+  // If no local record at all, check Supabase with fast timeout
   try {
     const sbSub = await fetchSubscriptionFromSupabase(phone);
     if (sbSub) {

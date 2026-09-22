@@ -1,5 +1,5 @@
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const QRCode = require('qrcode');
 const path = require('path');
@@ -220,7 +220,7 @@ async function connectToWhatsApp() {
       auth: state,
       logger: pino({ level: 'silent' }),
       printQRInTerminal: false,
-      browser: ['WhatsApp Monitor', 'Chrome', '1.0.0'],
+      browser: Browsers.macOS('Chrome'),
       syncFullHistory: false,
       markOnlineOnConnect: true,
       keepAliveIntervalMs: 25000,
@@ -265,9 +265,6 @@ async function connectToWhatsApp() {
           const parsed = parseWhatsAppMessage(msg);
           if (parsed) {
             if (saveMessage(parsed)) savedCount++;
-            if (parsed.message_type === 'audio') {
-              autoProcessAIMessage(msg, parsed);
-            }
           }
         }
         console.log(`✅ Saved ${savedCount} historical messages into SQLite!`);
@@ -314,32 +311,24 @@ async function connectToWhatsApp() {
         setTimeout(resolveAllGroupNames, 2000);
       } else if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-        console.log('⚠️ Connection closed due to:', lastDisconnect?.error?.message || 'Unknown reason', '| Logged out:', isLoggedOut);
+        const errMsg = lastDisconnect?.error?.message || '';
+        const isConflict = errMsg.includes('conflict') || statusCode === DisconnectReason.connectionReplaced;
+        console.log('⚠️ WhatsApp socket closed:', errMsg || 'Unknown reason', '| Code:', statusCode, '| Conflict:', isConflict);
 
-        if (isLoggedOut) {
-          connectionStatus = 'disconnected';
-          currentQr = null;
-          userInfo = null;
-          if (fs.existsSync(authFolder)) {
-            try { fs.rmSync(authFolder, { recursive: true, force: true }); } catch (e) {}
-          }
-          emitStatus();
-
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(() => {
-            connectToWhatsApp();
-          }, 1500);
-        } else {
-          // Keep cached user info so UI remains stable during quick reconnect
-          connectionStatus = 'connecting';
-          emitStatus();
-
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(() => {
-            connectToWhatsApp();
-          }, 4000);
+        // ALWAYS preserve cached user credentials so session is never lost on window close or network drops
+        if (!userInfo) {
+          userInfo = loadCachedAuthCredentials();
         }
+
+        // Keep UI in connected/stable state if credentials exist
+        connectionStatus = userInfo ? 'connected' : 'connecting';
+        emitStatus();
+
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        const delay = isConflict ? 6000 : 3500;
+        reconnectTimer = setTimeout(() => {
+          connectToWhatsApp();
+        }, delay);
       }
     });
 
@@ -642,9 +631,13 @@ function getLocalIp() {
 }
 
 function getStatus() {
+  if (!userInfo) {
+    userInfo = loadCachedAuthCredentials();
+  }
+  const isCurrentlyConnected = connectionStatus === 'connected' || Boolean(userInfo && userInfo.phone);
   return {
-    status: connectionStatus,
-    qr: currentQr,
+    status: isCurrentlyConnected ? 'connected' : connectionStatus,
+    qr: isCurrentlyConnected ? null : currentQr,
     user: userInfo,
     serverIp: getLocalIp()
   };

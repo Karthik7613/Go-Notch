@@ -8,6 +8,7 @@ process.on('unhandledRejection', (reason) => {
 
 require('dotenv').config();
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -79,9 +80,25 @@ const io = new Server(server, {
 });
 
 app.use(cors());
+app.use(compression({
+  threshold: 1024,
+  level: 6
+}));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'public')));
-app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+
+const staticOptions = {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  }
+};
+
+app.use(express.static(path.join(__dirname, '..', 'public'), staticOptions));
+app.use('/admin', express.static(path.join(__dirname, '..', 'admin'), staticOptions));
 
 // Health check endpoint for Railway and cloud monitoring
 app.get('/health', (req, res) => {
@@ -1014,7 +1031,8 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/threads', (req, res) => {
   try {
-    const threads = getChatThreads(req.query.q);
+    const limit = req.query.limit ? Number(req.query.limit) : 100;
+    const threads = getChatThreads(req.query.q, limit);
     res.json(threads);
   } catch (err) {
     res.status(500).json({ error: err.message });

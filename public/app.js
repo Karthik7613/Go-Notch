@@ -1621,18 +1621,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let knownAlertIds = new Set();
   let isFirstAlertLoad = true;
+  let activeAlertsPromise = null;
 
   async function loadKeywordAlerts() {
-    try {
-      const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
-      const phoneParam = userPhone ? `?phone=${userPhone}` : '';
-      const res = await apiFetch(`/api/keywords/alerts${phoneParam}`);
-      const alerts = await res.json();
-      cachedAlertsData = alerts;
-      renderKeywordAlerts(alerts);
-    } catch (err) {
-      console.error('Error loading keyword alerts:', err);
-    }
+    if (activeAlertsPromise) return activeAlertsPromise;
+    activeAlertsPromise = (async () => {
+      try {
+        const userPhone = currentUser && currentUser.phone ? encodeURIComponent(currentUser.phone) : '';
+        const phoneParam = userPhone ? `?phone=${userPhone}` : '';
+        const res = await apiFetch(`/api/keywords/alerts${phoneParam}`);
+        const alerts = await res.json();
+        cachedAlertsData = alerts;
+        renderKeywordAlerts(alerts);
+        if (currentUser && currentUser.phone && Array.isArray(alerts)) {
+          try {
+            localStorage.setItem('cached_alerts_' + currentUser.phone, JSON.stringify(alerts.slice(0, 30)));
+          } catch (e) {}
+        }
+      } catch (err) {
+        console.error('Error loading keyword alerts:', err);
+      } finally {
+        activeAlertsPromise = null;
+      }
+    })();
+    return activeAlertsPromise;
   }
 
   function renderKeywordAlerts(alerts) {
@@ -2107,32 +2119,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateConnectionStatus(data) {
     const { status, qr, user, serverIp } = data;
-    console.log('📡 WhatsApp status update received:', status, qr ? 'QR available' : 'No QR');
-
-    if (qr) {
-      currentQrData = qr;
-    }
+    console.log('📡 WhatsApp status update received:', status, qr ? 'QR available' : 'No QR', user ? user.name : 'No user');
 
     if (qrServerUrlInput && serverIp && serverIp !== 'localhost' && !qrServerUrlInput.value.includes(serverIp)) {
       qrServerUrlInput.placeholder = `http://${serverIp}:3000`;
     }
 
-    if (status === 'connected' || user) {
+    const effectiveUser = user || (cachedWA && cachedWA.user ? cachedWA.user : null);
+    const isEffectiveConnected = (status === 'connected') || Boolean(user) || (Boolean(effectiveUser) && status !== 'disconnected' && !qr);
+
+    if (isEffectiveConnected) {
       isConnected = true;
       currentQrData = null;
-      setStoredWA({ status: 'connected', user: user || { name: waAccountName, phone: waAccountPhone } });
-      if (statusText) statusText.textContent = 'Connected';
-      if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
-
       if (user) {
         waAccountName = user.name || '';
         waAccountPhone = user.phone || '';
-        if (userName) userName.textContent = user.name || 'WhatsApp Monitor';
-        if (connectedUserName) connectedUserName.textContent = `${user.name || 'WhatsApp Account'} (${user.phone || ''})`;
-        const initial = (user.name || 'W').charAt(0).toUpperCase();
-        if (userAvatar) userAvatar.textContent = initial;
-        updateProfilePageData();
+        setStoredWA({ status: 'connected', user: { name: waAccountName, phone: waAccountPhone } });
+      } else if (effectiveUser) {
+        waAccountName = effectiveUser.name || waAccountName;
+        waAccountPhone = effectiveUser.phone || waAccountPhone;
       }
+      if (statusText) statusText.textContent = 'Connected';
+      if (statusBadge) statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
+
+      if (userName) userName.textContent = waAccountName || 'WhatsApp Monitor';
+      if (connectedUserName) connectedUserName.textContent = `${waAccountName || 'WhatsApp Account'} (${waAccountPhone || ''})`;
+      const initial = (waAccountName || 'W').charAt(0).toUpperCase();
+      if (userAvatar) userAvatar.textContent = initial;
+      updateProfilePageData();
 
       // Connected → close QR modal
       if (qrModal) {
@@ -2146,19 +2160,18 @@ document.addEventListener('DOMContentLoaded', () => {
         loadStats();
         loadThreads();
       }
-    } else if (qr || currentQrData) {
+    } else if (qr) {
+      currentQrData = qr;
       isConnected = false;
-      const qrToShow = qr || currentQrData;
       if (statusText) statusText.textContent = 'Scan QR Code';
       if (statusBadge) {
         statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold rounded-lg shadow animate-pulse"><i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Link WhatsApp</button>`;
       }
 
       if (qrFrame) qrFrame.classList.remove('hidden');
-      if (qrImage) qrImage.src = qrToShow;
+      if (qrImage) qrImage.src = qr;
       if (qrLoading) qrLoading.classList.add('hidden');
     } else if (status === 'connecting') {
-      isConnected = false;
       if (statusText) statusText.textContent = 'Connecting...';
       if (statusBadge) {
         statusBadge.innerHTML = `<button type="button" class="cursor-pointer flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold rounded-lg"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Connecting...</button>`;
@@ -2197,32 +2210,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  let activeStatsPromise = null;
   async function loadStats() {
-    try {
-      const res = await apiFetch('/api/stats');
-      const data = await res.json();
-      if (sidebarTotalCount) sidebarTotalCount.textContent = (data.totalMessages || 0).toLocaleString();
-    } catch (err) {
-      console.error('Failed to load stats:', err);
-    }
+    if (activeStatsPromise) return activeStatsPromise;
+    activeStatsPromise = (async () => {
+      try {
+        const res = await apiFetch('/api/stats');
+        const data = await res.json();
+        if (sidebarTotalCount) sidebarTotalCount.textContent = (data.totalMessages || 0).toLocaleString();
+        try {
+          localStorage.setItem('cached_stats', JSON.stringify(data));
+        } catch (e) {}
+        return data;
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      } finally {
+        activeStatsPromise = null;
+      }
+      return null;
+    })();
+    return activeStatsPromise;
   }
 
-  async function loadThreads() {
+  let activeThreadsPromise = null;
+  async function loadThreads(customLimit = 100) {
     const q = sidebarSearchInput ? sidebarSearchInput.value.trim() : '';
-    try {
-      const res = await apiFetch(`/api/threads?q=${encodeURIComponent(q)}`);
-      threadsData = await res.json();
+    if (activeThreadsPromise && !q) return activeThreadsPromise;
+    activeThreadsPromise = (async () => {
+      try {
+        const res = await apiFetch(`/api/threads?q=${encodeURIComponent(q)}&limit=${customLimit}`);
+        threadsData = await res.json();
 
-      renderSidebarThreads(threadsData, q);
+        renderSidebarThreads(threadsData, q);
 
-      // On wide screens (desktop / tablet / landscape), auto-select first thread if none is currently selected
-      if (!activeChatJid && threadsData && threadsData.length > 0 && window.innerWidth >= 768) {
-        const first = threadsData[0];
-        selectChatThread(first.jid, first.name || first.jid, first.jid.endsWith('@g.us'));
+        if (!q && Array.isArray(threadsData)) {
+          try {
+            localStorage.setItem('cached_threads', JSON.stringify(threadsData.slice(0, 40)));
+          } catch (e) {}
+        }
+
+        // On wide screens (desktop / tablet / landscape), auto-select first thread if none is currently selected
+        if (!activeChatJid && threadsData && threadsData.length > 0 && window.innerWidth >= 768) {
+          const first = threadsData[0];
+          selectChatThread(first.jid, first.name || first.jid, first.jid.endsWith('@g.us'));
+        }
+      } catch (err) {
+        console.error('Failed to load chat threads:', err);
+      } finally {
+        activeThreadsPromise = null;
       }
-    } catch (err) {
-      console.error('Failed to load chat threads:', err);
-    }
+    })();
+    return activeThreadsPromise;
   }
 
   function renderSidebarThreads(threads, query = '') {
@@ -3546,25 +3584,37 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDashboardSubscription();
   }
 
+  let activeSubscriptionPromise = null;
   async function fetchSubscriptionStatus() {
     if (!currentUser || !currentUser.phone) return null;
-    try {
-      const res = await apiFetch(`/api/subscription/status?phone=${encodeURIComponent(currentUser.phone)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.subscription) {
-          userSubscription = data.subscription;
-          if (data.key_id) razorpayKeyId = data.key_id;
-          renderDashboardSubscription();
-          renderDashboardPayments();
-          enforceSubscriptionAccess();
-          return userSubscription;
+    if (activeSubscriptionPromise) return activeSubscriptionPromise;
+
+    activeSubscriptionPromise = (async () => {
+      try {
+        const res = await apiFetch(`/api/subscription/status?phone=${encodeURIComponent(currentUser.phone)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.subscription) {
+            userSubscription = data.subscription;
+            if (data.key_id) razorpayKeyId = data.key_id;
+            try {
+              localStorage.setItem('cached_sub_' + currentUser.phone, JSON.stringify(data.subscription));
+            } catch (e) {}
+            renderDashboardSubscription();
+            renderDashboardPayments();
+            enforceSubscriptionAccess();
+            return userSubscription;
+          }
         }
+      } catch (err) {
+        console.warn('Subscription fetch error:', err);
+      } finally {
+        activeSubscriptionPromise = null;
       }
-    } catch (err) {
-      console.warn('Subscription fetch error:', err);
-    }
-    return null;
+      return null;
+    })();
+
+    return activeSubscriptionPromise;
   }
 
   function renderDashboardSubscription() {
@@ -4048,19 +4098,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // Instantly hide auth modal and show dashboard with cached user state
     hideAuthModal();
     renderUserProfile(currentUser);
+
+    // Instant Cache-First UI Hydration (0ms perceived reload time)
+    try {
+      const cachedSub = localStorage.getItem('cached_sub_' + currentUser.phone);
+      if (cachedSub) {
+        userSubscription = JSON.parse(cachedSub);
+        renderDashboardSubscription();
+        renderDashboardPayments();
+      }
+      const cachedStats = localStorage.getItem('cached_stats');
+      if (cachedStats) {
+        const d = JSON.parse(cachedStats);
+        if (sidebarTotalCount) sidebarTotalCount.textContent = (d.totalMessages || 0).toLocaleString();
+      }
+      const cachedThreads = localStorage.getItem('cached_threads');
+      if (cachedThreads) {
+        threadsData = JSON.parse(cachedThreads);
+        renderSidebarThreads(threadsData);
+      }
+      const cachedAlerts = localStorage.getItem('cached_alerts_' + currentUser.phone);
+      if (cachedAlerts) {
+        cachedAlertsData = JSON.parse(cachedAlerts);
+        renderKeywordAlerts(cachedAlertsData);
+      }
+    } catch (e) {
+      console.warn('Cache hydration error:', e);
+    }
+
     if (socket && currentUser && currentUser.phone) {
       socket.emit('register_user', currentUser.phone);
     }
-    fetchSubscriptionStatus().catch(() => {});
 
     // Restore last active tab so user doesn't lose their place when closing/reopening window
     const savedTab = localStorage.getItem('active_tab') || 'dashboard';
     switchTab(savedTab);
 
-    loadStats();
-    loadThreads();
-    loadKeywords();
-    loadKeywordAlerts();
+    // Parallel Background Data Sync (Fast, Deduplicated & Non-blocking)
+    Promise.all([
+      fetchSubscriptionStatus(),
+      loadStats(),
+      loadThreads(),
+      loadKeywords(),
+      loadKeywordAlerts()
+    ]).catch(err => console.warn('Background sync warning:', err));
+
     updateDesktopNotifUI();
 
     // Background validation & profile sync with server

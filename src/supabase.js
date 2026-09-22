@@ -178,6 +178,16 @@ async function syncUserToSupabase(user) {
 }
 
 /**
+ * Helper to enforce strict timeout on cloud database lookups
+ */
+function withTimeout(promise, ms = 1200) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timeout')), ms))
+  ]);
+}
+
+/**
  * Fetch user profile from Supabase by phone
  */
 async function fetchUserFromSupabase(phone) {
@@ -185,17 +195,18 @@ async function fetchUserFromSupabase(phone) {
   try {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
-    const { data, error } = await supabase
+    const query = supabase
       .from('users')
       .select('*')
       .or(`phone.eq.${p10},phone.eq.${cleanPhone},phone.eq.91${p10}`)
       .limit(1)
       .maybeSingle();
 
+    const { data, error } = await withTimeout(query, 1200);
+
     if (error || !data) return null;
     return data;
   } catch (err) {
-    console.warn('⚠️ Supabase fetchUser exception:', err.message);
     return null;
   }
 }
@@ -245,7 +256,7 @@ async function fetchSubscriptionFromSupabase(phone) {
   try {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const p10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
-    const { data, error } = await supabase
+    const query = supabase
       .from('subscriptions')
       .select('*')
       .or(`user_phone.eq.${p10},user_phone.eq.${cleanPhone}`)
@@ -253,10 +264,11 @@ async function fetchSubscriptionFromSupabase(phone) {
       .limit(1)
       .maybeSingle();
 
+    const { data, error } = await withTimeout(query, 1200);
+
     if (error || !data) return null;
     return data;
   } catch (err) {
-    console.warn('⚠️ Supabase fetchSubscription exception:', err.message);
     return null;
   }
 }

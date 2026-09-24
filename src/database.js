@@ -560,16 +560,27 @@ function getChatThreads(query = '', limit = 100) {
   });
 }
 
-function getThreadMessages(chatJid, limit = 500) {
-  const rows = db.prepare(`
+function getThreadMessages(chatJid, limit = 500, sinceTimestamp = null) {
+  let query = `
     SELECT * FROM (
       SELECT * FROM messages 
-      WHERE chat_jid = ? 
+      WHERE chat_jid = ?
+  `;
+  const params = [chatJid];
+
+  if (sinceTimestamp && !isNaN(sinceTimestamp)) {
+    query += ` AND timestamp >= ? `;
+    params.push(Number(sinceTimestamp));
+  }
+
+  query += `
       ORDER BY timestamp DESC, id DESC 
       LIMIT ?
     ) ORDER BY timestamp ASC, id ASC
-  `).all(chatJid, Number(limit));
+  `;
+  params.push(Number(limit || 500));
 
+  const rows = db.prepare(query).all(...params);
   return rows.map(enrichMessage);
 }
 

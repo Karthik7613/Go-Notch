@@ -724,6 +724,11 @@
             All <span id="sidebarTotalCount">0</span>
           </button>
 
+          <button id="filterTodayBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition cursor-pointer flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3 h-3 text-blue-500"></i>
+            <span>Today</span>
+          </button>
+
           <button id="filterGroupsBtn" class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0f2f5] dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0 transition cursor-pointer">
             Groups
           </button>
@@ -793,6 +798,12 @@
                 <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="chatSearchInput" placeholder="Search in chat..." class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500">
               </div>
+
+              <!-- Reload Today's Messages CTA Button in Header -->
+              <button id="reloadTodayMsgsBtn" title="Reload messages received today" class="px-2.5 sm:px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-blue-200/60 dark:border-blue-800/40 cursor-pointer flex-shrink-0 active:scale-95 shadow-xs">
+                <i data-lucide="calendar-check" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"></i>
+                <span id="reloadTodayMsgsBtnText">Today's Messages</span>
+              </button>
 
               <button id="exportThreadBtn" title="Export this chat" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm cursor-pointer">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
@@ -1710,7 +1721,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 
 </body>
 </html>

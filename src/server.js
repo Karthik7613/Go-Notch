@@ -1041,7 +1041,16 @@ app.get('/api/threads', (req, res) => {
 
 app.get('/api/threads/:jid/messages', (req, res) => {
   try {
-    const messages = getThreadMessages(req.params.jid, req.query.limit);
+    const { limit, since, today } = req.query;
+    let sinceTimestamp = null;
+    if (today === 'true' || today === '1') {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      sinceTimestamp = Math.floor(now.getTime() / 1000);
+    } else if (since) {
+      sinceTimestamp = Number(since);
+    }
+    const messages = getThreadMessages(req.params.jid, limit, sinceTimestamp);
     res.json(messages);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -183,21 +183,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshThreadsBtn = document.getElementById('refreshThreadsBtn');
 
   const filterAllBtn = document.getElementById('filterAllBtn');
+  const filterTodayBtn = document.getElementById('filterTodayBtn');
   const filterGroupsBtn = document.getElementById('filterGroupsBtn');
   const filterUnreadBtn = document.getElementById('filterUnreadBtn');
   const filterChannelsBtn = document.getElementById('filterChannelsBtn');
   const filterUnreadBadge = document.getElementById('filterUnreadBadge');
+  const filterTodayBadge = document.getElementById('filterTodayBadge');
   const headerPlusBtn = document.getElementById('headerPlusBtn');
   const openCameraBtn = document.getElementById('openCameraBtn');
 
   function setFilter(filter) {
     currentFilter = filter;
 
-    [filterAllBtn, filterGroupsBtn, filterUnreadBtn, filterChannelsBtn].forEach(btn => {
+    [filterAllBtn, filterTodayBtn, filterGroupsBtn, filterUnreadBtn, filterChannelsBtn].forEach(btn => {
       if (btn) btn.classList.remove('active');
     });
 
     if (filter === 'all' && filterAllBtn) filterAllBtn.classList.add('active');
+    if (filter === 'today' && filterTodayBtn) filterTodayBtn.classList.add('active');
     if (filter === 'groups' && filterGroupsBtn) filterGroupsBtn.classList.add('active');
     if (filter === 'unread' && filterUnreadBtn) filterUnreadBtn.classList.add('active');
     if (filter === 'channels' && filterChannelsBtn) filterChannelsBtn.classList.add('active');
@@ -206,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (filterAllBtn) filterAllBtn.addEventListener('click', () => setFilter('all'));
+  if (filterTodayBtn) filterTodayBtn.addEventListener('click', () => setFilter('today'));
   if (filterGroupsBtn) filterGroupsBtn.addEventListener('click', () => setFilter('groups'));
   if (filterUnreadBtn) filterUnreadBtn.addEventListener('click', () => setFilter('unread'));
   if (filterChannelsBtn) filterChannelsBtn.addEventListener('click', () => setFilter('channels'));
@@ -2329,8 +2333,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalUnread = (threads || []).reduce((sum, t) => sum + (Number(t.unread_count || 0) > 0 ? 1 : 0), 0);
     if (filterUnreadBadge) filterUnreadBadge.textContent = totalUnread;
 
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const startOfTodaySec = Math.floor(now.getTime() / 1000);
+
+    const totalTodayChats = (threads || []).filter(t => Number(t.last_message_time || 0) >= startOfTodaySec).length;
+    if (filterTodayBadge) {
+      filterTodayBadge.textContent = totalTodayChats;
+      if (totalTodayChats > 0) filterTodayBadge.classList.remove('hidden');
+      else filterTodayBadge.classList.add('hidden');
+    }
+
     let filteredThreads = threads || [];
-    if (currentFilter === 'groups') {
+    if (currentFilter === 'today') {
+      filteredThreads = threads.filter(t => Number(t.last_message_time || 0) >= startOfTodaySec);
+    } else if (currentFilter === 'groups') {
       filteredThreads = threads.filter(t => t.jid && t.jid.endsWith('@g.us'));
     } else if (currentFilter === 'unread') {
       filteredThreads = threads.filter(t => Number(t.unread_count || 0) > 0);
@@ -2531,20 +2548,116 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessageInput.focus();
   }
 
-  async function loadThreadMessages(jid) {
+  let chatMessagesViewMode = 'all'; // 'all' or 'today'
+
+  function getDateDividerLabel(timestampSec) {
+    if (!timestampSec) return 'Previous';
+    const msgDate = new Date(timestampSec * 1000);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const checkDate = new Date(timestampSec * 1000);
+    checkDate.setHours(0, 0, 0, 0);
+
+    if (checkDate.getTime() === today.getTime()) {
+      return 'Today';
+    }
+    if (checkDate.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
+    }
+    return msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function createDateDividerElement(dateLabel, isToday = false) {
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-center my-3 select-none';
+    if (isToday) {
+      div.id = 'todayDividerAnchor';
+      div.innerHTML = `
+        <span class="px-3.5 py-1 bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-full shadow-xs border border-blue-300/80 dark:border-blue-700/60 flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"></i>
+          <span>Today</span>
+        </span>
+      `;
+    } else {
+      div.innerHTML = `
+        <span class="px-3 py-0.5 bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-full shadow-xs">
+          ${dateLabel}
+        </span>
+      `;
+    }
+    return div;
+  }
+
+  async function loadThreadMessages(jid, mode = chatMessagesViewMode) {
+    chatMessagesViewMode = mode;
     try {
-      const res = await apiFetch(`/api/threads/${encodeURIComponent(jid)}/messages?limit=200`);
+      const url = mode === 'today'
+        ? `/api/threads/${encodeURIComponent(jid)}/messages?limit=500&today=true`
+        : `/api/threads/${encodeURIComponent(jid)}/messages?limit=200`;
+      const res = await apiFetch(url);
       const messages = await res.json();
 
-      renderMessagesCanvas(messages);
+      renderMessagesCanvas(messages, mode);
       scrollToCanvasBottom();
     } catch (err) {
       console.error('Failed to load thread messages:', err);
     }
   }
 
-  function renderMessagesCanvas(messages) {
+  function renderMessagesCanvas(messages, mode = 'all') {
     chatMessagesCanvas.innerHTML = '';
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const startOfTodaySec = Math.floor(now.getTime() / 1000);
+
+    const todayMsgs = (messages || []).filter(m => Number(m.timestamp) >= startOfTodaySec);
+    const pastMsgs = (messages || []).filter(m => Number(m.timestamp) < startOfTodaySec);
+
+    // Sync header button state
+    const reloadTodayMsgsBtnText = document.getElementById('reloadTodayMsgsBtnText');
+    const reloadTodayMsgsBtn = document.getElementById('reloadTodayMsgsBtn');
+    if (reloadTodayMsgsBtnText) {
+      if (mode === 'today') {
+        reloadTodayMsgsBtnText.textContent = 'All Messages';
+        if (reloadTodayMsgsBtn) {
+          reloadTodayMsgsBtn.className = 'px-2.5 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex-shrink-0 active:scale-95 shadow-xs';
+        }
+      } else {
+        reloadTodayMsgsBtnText.textContent = "Today's Messages";
+        if (reloadTodayMsgsBtn) {
+          reloadTodayMsgsBtn.className = 'px-2.5 sm:px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-blue-200/60 dark:border-blue-800/40 cursor-pointer flex-shrink-0 active:scale-95 shadow-xs';
+        }
+      }
+    }
+
+    // Empty state for today mode
+    if (mode === 'today' && todayMsgs.length === 0) {
+      chatMessagesCanvas.innerHTML = `
+        <div class="py-12 text-center text-slate-400 text-xs space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
+            <i data-lucide="calendar-x" class="w-6 h-6"></i>
+          </div>
+          <p class="font-bold text-slate-800 dark:text-white text-sm">No messages received today in this chat</p>
+          <p class="text-[11px] max-w-xs mx-auto text-slate-500 dark:text-slate-400">There are no new incoming or outgoing messages today. Click below to load your previous chat history.</p>
+          <button id="emptyStateLoadAllBtn" class="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl font-bold text-xs shadow-md shadow-blue-600/20 transition inline-flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i>
+            <span>Load Previous Messages</span>
+          </button>
+        </div>
+      `;
+      const emptyBtn = chatMessagesCanvas.querySelector('#emptyStateLoadAllBtn');
+      if (emptyBtn) {
+        emptyBtn.addEventListener('click', () => {
+          loadThreadMessages(activeChatJid, 'all');
+        });
+      }
+      safeCreateIcons();
+      return;
+    }
 
     if (!messages || messages.length === 0) {
       chatMessagesCanvas.innerHTML = `
@@ -2557,12 +2670,79 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Banner CTA when past backlog is displayed in 'all' mode
+    if (mode === 'all' && pastMsgs.length > 0) {
+      const bannerDiv = document.createElement('div');
+      bannerDiv.id = 'todayCtaBanner';
+      bannerDiv.className = 'p-3 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 dark:from-slate-800/90 dark:to-slate-850/90 border border-blue-200/80 dark:border-blue-800/40 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs mb-3';
+      bannerDiv.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="clock-rewind" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="font-bold text-slate-800 dark:text-white truncate">Showing previous days' conversation</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              ${todayMsgs.length > 0 ? `${todayMsgs.length} message(s) received today` : 'Skip past backlog and load today'}
+            </p>
+          </div>
+        </div>
+        <button id="chatBannerReloadTodayBtn" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <span>Reload Today</span>
+        </button>
+      `;
+      chatMessagesCanvas.appendChild(bannerDiv);
+    } else if (mode === 'today') {
+      const bannerDiv = document.createElement('div');
+      bannerDiv.id = 'todayCtaBanner';
+      bannerDiv.className = 'p-3 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-300/80 dark:border-emerald-700/50 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs mb-3';
+      bannerDiv.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="calendar-check" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="font-bold text-emerald-900 dark:text-emerald-300 truncate">Viewing Today's Messages Only</p>
+            <p class="text-[11px] text-emerald-700 dark:text-emerald-400 truncate">${todayMsgs.length} message(s) received today</p>
+          </div>
+        </div>
+        <button id="chatBannerShowAllBtn" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+          <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+          <span>Load Previous History</span>
+        </button>
+      `;
+      chatMessagesCanvas.appendChild(bannerDiv);
+    }
+
     const filterQuery = chatSearchInput.value.trim();
 
+    let lastDateLabel = null;
     messages.forEach(msg => {
+      const dateLabel = getDateDividerLabel(msg.timestamp);
+      if (dateLabel !== lastDateLabel) {
+        lastDateLabel = dateLabel;
+        const isToday = dateLabel === 'Today';
+        const divider = createDateDividerElement(dateLabel, isToday);
+        chatMessagesCanvas.appendChild(divider);
+      }
       const bubble = createBubbleElement(msg, filterQuery);
       chatMessagesCanvas.appendChild(bubble);
     });
+
+    const bannerReloadTodayBtn = chatMessagesCanvas.querySelector('#chatBannerReloadTodayBtn');
+    if (bannerReloadTodayBtn) {
+      bannerReloadTodayBtn.addEventListener('click', () => {
+        loadThreadMessages(activeChatJid, 'today');
+      });
+    }
+
+    const bannerShowAllBtn = chatMessagesCanvas.querySelector('#chatBannerShowAllBtn');
+    if (bannerShowAllBtn) {
+      bannerShowAllBtn.addEventListener('click', () => {
+        loadThreadMessages(activeChatJid, 'all');
+      });
+    }
 
     bindAITranscribeButtons();
     safeCreateIcons();
@@ -2827,6 +3007,15 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => loadThreadMessages(activeChatJid), 300);
       }
+    });
+  }
+
+  const reloadTodayMsgsBtn = document.getElementById('reloadTodayMsgsBtn');
+  if (reloadTodayMsgsBtn) {
+    reloadTodayMsgsBtn.addEventListener('click', () => {
+      if (!activeChatJid) return;
+      const targetMode = (chatMessagesViewMode === 'today') ? 'all' : 'today';
+      loadThreadMessages(activeChatJid, targetMode);
     });
   }
 

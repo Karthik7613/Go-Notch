@@ -1022,10 +1022,16 @@
 
           <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
             <span class="text-xs text-slate-500 dark:text-slate-400">Shared background sync is active</span>
-            <button id="profileOpenWAModalBtn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
-              <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
-              <span>Device Info</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <button id="profileOpenWAModalBtn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+                <span>Device Info</span>
+              </button>
+              <button id="profileDisconnectWABtn" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer border border-rose-200 dark:border-rose-800/60">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                <span id="profileDisconnectWABtnText">Log Out</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1069,14 +1075,30 @@
           </button>
         </div>
 
-        <!-- User Logout Card -->
-        <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
-          <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition text-left cursor-pointer">
-            <i data-lucide="log-out" class="w-5 h-5 text-rose-500 flex-shrink-0"></i>
-            <div class="flex-1">
-              <span class="text-xs font-semibold text-rose-600 dark:text-rose-400">Log Out User Session</span>
-              <p class="text-[10px] text-slate-400">Returns to mobile login (WhatsApp remains connected)</p>
+        <!-- Account & WhatsApp Logout Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/60 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <!-- WhatsApp Logout Button -->
+          <button id="pageProfileDisconnectWABtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left cursor-pointer group">
+            <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <i data-lucide="message-square-off" class="w-5 h-5"></i>
             </div>
+            <div class="flex-1">
+              <span class="text-xs font-semibold text-rose-600 dark:text-rose-400">Log Out WhatsApp</span>
+              <p class="text-[10px] text-slate-400">Unlinks WhatsApp Web session and clears credentials (will require scanning QR code again)</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform"></i>
+          </button>
+
+          <!-- User App Account Logout -->
+          <button id="pageProfileLogoutBtn" class="w-full px-4 py-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left cursor-pointer group">
+            <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <i data-lucide="log-out" class="w-5 h-5"></i>
+            </div>
+            <div class="flex-1">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Sign Out of Go-Notch</span>
+              <p class="text-[10px] text-slate-400">Returns to mobile sign-in (WhatsApp remains connected)</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform"></i>
           </button>
         </div>
 
@@ -1688,7 +1710,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 
 </body>
 </html>

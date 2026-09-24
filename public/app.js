@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Pre-load WhatsApp status from persistent cache
-  const cachedWA = getStoredWA();
+  let cachedWA = getStoredWA();
   let activeChatJid = null;
   let activeChatName = '';
   let threadsData = [];
@@ -1219,19 +1219,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser) {
       renderUserProfile(currentUser);
     }
-    // WA connection status badge in profile
+    // WA connection status badge and buttons in profile
+    const profileDisconnectWABtnText = document.getElementById('profileDisconnectWABtnText');
+    const pageProfileDisconnectWABtn = document.getElementById('pageProfileDisconnectWABtn');
+
     if (pageProfileWAStatusBadge && pageProfileWAAccountDesc) {
       if (isConnected) {
         pageProfileWAStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected`;
         pageProfileWAStatusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300';
         pageProfileWAAccountDesc.textContent = waAccountName ? `Connected as ${waAccountName} (${waAccountPhone})` : 'Connected & Synced';
+        if (profileDisconnectWABtnText) profileDisconnectWABtnText.textContent = 'Log Out';
+        if (pageProfileDisconnectWABtn) {
+          pageProfileDisconnectWABtn.classList.remove('opacity-60');
+          const title = pageProfileDisconnectWABtn.querySelector('span');
+          if (title) title.textContent = 'Log Out WhatsApp';
+        }
       } else {
         pageProfileWAStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Scan QR`;
         pageProfileWAStatusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300';
-        pageProfileWAAccountDesc.textContent = 'WhatsApp QR scan required';
+        pageProfileWAAccountDesc.textContent = 'WhatsApp disconnected / QR scan required';
+        if (profileDisconnectWABtnText) profileDisconnectWABtnText.textContent = 'Scan QR';
+        if (pageProfileDisconnectWABtn) {
+          pageProfileDisconnectWABtn.classList.add('opacity-60');
+          const title = pageProfileDisconnectWABtn.querySelector('span');
+          if (title) title.textContent = 'Link WhatsApp (Scan QR)';
+        }
       }
     }
     updateDesktopNotifUI();
+    safeCreateIcons();
   }
 
   // ---- Bottom Sheet helpers ----
@@ -2066,7 +2082,19 @@ document.addEventListener('DOMContentLoaded', () => {
   async function triggerLogoutAndReset() {
     try {
       setStoredWA({ status: 'disconnected' });
+      cachedWA = null;
       isConnected = false;
+      waAccountName = '';
+      waAccountPhone = '';
+
+      updateConnectionStatus({
+        status: 'disconnected',
+        qr: null,
+        user: null,
+        hasCreds: false
+      });
+      updateProfilePageData();
+
       // Open QR modal immediately so user sees the reconnect flow
       if (qrModal) {
         qrModal.classList.remove('hidden');
@@ -2076,10 +2104,30 @@ document.addEventListener('DOMContentLoaded', () => {
       if (qrContainer) qrContainer.classList.remove('hidden');
       if (qrLoading) qrLoading.classList.remove('hidden');
       if (qrFrame) qrFrame.classList.add('hidden');
-      await apiFetch('/api/logout', { method: 'POST' });
+      await apiFetch('/api/whatsapp/disconnect', { method: 'POST' });
     } catch (err) {
       console.error('Logout error:', err);
     }
+  }
+
+  async function handleProfileWALogout() {
+    if (!isConnected) {
+      showQrModal(true);
+      return;
+    }
+    if (confirm('Are you sure you want to log out of WhatsApp?\n\nThis will disconnect your WhatsApp Web session and clear stored credentials. You will need to scan the QR code again to reconnect.')) {
+      await triggerLogoutAndReset();
+    }
+  }
+
+  const profileDisconnectWABtn = document.getElementById('profileDisconnectWABtn');
+  if (profileDisconnectWABtn) {
+    profileDisconnectWABtn.addEventListener('click', handleProfileWALogout);
+  }
+
+  const pageProfileDisconnectWABtn = document.getElementById('pageProfileDisconnectWABtn');
+  if (pageProfileDisconnectWABtn) {
+    pageProfileDisconnectWABtn.addEventListener('click', handleProfileWALogout);
   }
 
   if (qrLogoutBtn) {
